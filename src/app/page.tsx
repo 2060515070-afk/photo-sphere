@@ -1,45 +1,59 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import PhotoSphere from '@/components/PhotoSphere'
 
-interface Module {
+interface Photo {
   id: string
-  name: string
-  icon: string
-  count: number
-  gradient: string
+  url: string
+  thumbnail: string
+  tags: string[]
 }
 
-const DEMO_MODULES: Module[] = [
-  { id: 'all', name: '全部照片', icon: '📸', count: 0, gradient: 'from-indigo-500/20 to-purple-500/20' },
-  { id: 'people', name: '人物', icon: '👤', count: 0, gradient: 'from-rose-500/20 to-pink-500/20' },
-  { id: 'environment', name: '环境', icon: '🌍', count: 0, gradient: 'from-emerald-500/20 to-teal-500/20' },
-  { id: 'travel', name: '游玩', icon: '🎢', count: 0, gradient: 'from-amber-500/20 to-orange-500/20' },
-  { id: 'tasks', name: '任务', icon: '📋', count: 0, gradient: 'from-blue-500/20 to-cyan-500/20' },
-  { id: 'food', name: '美食', icon: '🍔', count: 0, gradient: 'from-yellow-500/20 to-amber-500/20' },
-  { id: 'animals', name: '动物', icon: '🐱', count: 0, gradient: 'from-violet-500/20 to-fuchsia-500/20' },
-  { id: 'other', name: '其他', icon: '🎨', count: 0, gradient: 'from-slate-500/20 to-gray-500/20' },
+// 真实可用的演示照片
+const DEMO_PHOTOS: Photo[] = [
+  { id: '1', url: 'https://picsum.photos/seed/a1/800/800', thumbnail: 'https://picsum.photos/seed/a1/400/400', tags: ['风景'] },
+  { id: '2', url: 'https://picsum.photos/seed/a2/800/800', thumbnail: 'https://picsum.photos/seed/a2/400/400', tags: ['人物'] },
+  { id: '3', url: 'https://picsum.photos/seed/a3/800/800', thumbnail: 'https://picsum.photos/seed/a3/400/400', tags: ['美食'] },
+  { id: '4', url: 'https://picsum.photos/seed/a4/800/800', thumbnail: 'https://picsum.photos/seed/a4/400/400', tags: ['动物'] },
+  { id: '5', url: 'https://picsum.photos/seed/a5/800/800', thumbnail: 'https://picsum.photos/seed/a5/400/400', tags: ['风景'] },
+  { id: '6', url: 'https://picsum.photos/seed/a6/800/800', thumbnail: 'https://picsum.photos/seed/a6/400/400', tags: ['建筑'] },
+  { id: '7', url: 'https://picsum.photos/seed/a7/800/800', thumbnail: 'https://picsum.photos/seed/a7/400/400', tags: ['自然'] },
+  { id: '8', url: 'https://picsum.photos/seed/a8/800/800', thumbnail: 'https://picsum.photos/seed/a8/400/400', tags: ['人物'] },
+  { id: '9', url: 'https://picsum.photos/seed/a9/800/800', thumbnail: 'https://picsum.photos/seed/a9/400/400', tags: ['美食'] },
+  { id: '10', url: 'https://picsum.photos/seed/b1/800/800', thumbnail: 'https://picsum.photos/seed/b1/400/400', tags: ['风景'] },
+  { id: '11', url: 'https://picsum.photos/seed/b2/800/800', thumbnail: 'https://picsum.photos/seed/b2/400/400', tags: ['动物'] },
+  { id: '12', url: 'https://picsum.photos/seed/b3/800/800', thumbnail: 'https://picsum.photos/seed/b3/400/400', tags: ['建筑'] },
+  { id: '13', url: 'https://picsum.photos/seed/b4/800/800', thumbnail: 'https://picsum.photos/seed/b4/400/400', tags: ['人物'] },
+  { id: '14', url: 'https://picsum.photos/seed/b5/800/800', thumbnail: 'https://picsum.photos/seed/b5/400/400', tags: ['风景'] },
+  { id: '15', url: 'https://picsum.photos/seed/b6/800/800', thumbnail: 'https://picsum.photos/seed/b6/400/400', tags: ['美食'] },
+  { id: '16', url: 'https://picsum.photos/seed/b7/800/800', thumbnail: 'https://picsum.photos/seed/b7/400/400', tags: ['自然'] },
+  { id: '17', url: 'https://picsum.photos/seed/b8/800/800', thumbnail: 'https://picsum.photos/seed/b8/400/400', tags: ['动物'] },
+  { id: '18', url: 'https://picsum.photos/seed/b9/800/800', thumbnail: 'https://picsum.photos/seed/b9/400/400', tags: ['建筑'] },
+  { id: '19', url: 'https://picsum.photos/seed/c1/800/800', thumbnail: 'https://picsum.photos/seed/c1/400/400', tags: ['风景'] },
+  { id: '20', url: 'https://picsum.photos/seed/c2/800/800', thumbnail: 'https://picsum.photos/seed/c2/400/400', tags: ['人物'] },
+]
+
+const MODULES = [
+  { id: 'all', name: '全部照片', icon: '📸', count: 20 },
+  { id: 'people', name: '人物', icon: '👤', count: 5 },
+  { id: 'environment', name: '环境', icon: '🌍', count: 6 },
+  { id: 'travel', name: '游玩', icon: '🎢', count: 3 },
+  { id: 'food', name: '美食', icon: '🍔', count: 3 },
+  { id: 'animals', name: '动物', icon: '🐱', count: 3 },
 ]
 
 export default function Home() {
-  const [modules, setModules] = useState<Module[]>(DEMO_MODULES)
-  const [totalPhotos, setTotalPhotos] = useState(0)
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    // TODO: 从 Supabase 加载模块和照片数量
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   if (!mounted) return null
 
   return (
     <div style={{ minHeight: '100vh', padding: '40px 24px' }}>
-      {/* 头部统计 */}
-      <div style={{
-        textAlign: 'center',
-        marginBottom: '48px',
-      }}>
+      {/* 头部 */}
+      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
         <h1 style={{
           fontSize: '2.5rem',
           fontWeight: 700,
@@ -52,11 +66,11 @@ export default function Home() {
           记忆碎片
         </h1>
         <p style={{ color: '#8888a0', fontSize: '14px' }}>
-          {totalPhotos > 0 ? `${totalPhotos} 张照片，等待碎片重组` : '上传你的第一张照片，开始构建记忆空间'}
+          20 张照片，等待碎片重组
         </p>
       </div>
 
-      {/* 模块网格 */}
+      {/* 模块卡片 */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
@@ -64,7 +78,7 @@ export default function Home() {
         maxWidth: '1200px',
         margin: '0 auto',
       }}>
-        {modules.map((mod, index) => (
+        {MODULES.map((mod, index) => (
           <a
             key={mod.id}
             href={`/module/${mod.id}`}
@@ -78,30 +92,21 @@ export default function Home() {
               textDecoration: 'none',
               color: 'inherit',
               cursor: 'pointer',
-              animationDelay: `${index * 0.05}s`,
               opacity: 0,
               animation: `fadeIn 0.5s ease forwards ${index * 0.05}s`,
             }}
           >
             <span className="module-icon">{mod.icon}</span>
-            <span style={{
-              fontSize: '16px',
-              fontWeight: 500,
-              marginTop: '12px',
-            }}>
+            <span style={{ fontSize: '16px', fontWeight: 500, marginTop: '12px' }}>
               {mod.name}
             </span>
-            <span style={{
-              fontSize: '13px',
-              color: '#8888a0',
-              marginTop: '4px',
-            }}>
-              {mod.count > 0 ? `${mod.count} 张` : '暂无照片'}
+            <span style={{ fontSize: '13px', color: '#8888a0', marginTop: '4px' }}>
+              {mod.count} 张
             </span>
           </a>
         ))}
 
-        {/* 添加自定义模块 */}
+        {/* 自定义模块按钮 */}
         <button
           className="glass-card"
           style={{
@@ -115,21 +120,9 @@ export default function Home() {
             background: 'transparent',
             color: '#8888a0',
             opacity: 0,
-            animation: `fadeIn 0.5s ease forwards ${modules.length * 0.05}s`,
+            animation: `fadeIn 0.5s ease forwards ${MODULES.length * 0.05}s`,
           }}
-          onClick={() => {
-            const name = prompt('输入模块名称：')
-            if (name) {
-              const icon = prompt('输入模块图标（emoji）：') || '📁'
-              setModules(prev => [...prev, {
-                id: `custom-${Date.now()}`,
-                name,
-                icon,
-                count: 0,
-                gradient: 'from-gray-500/20 to-slate-500/20',
-              }])
-            }
-          }}
+          onClick={() => alert('自定义模块功能开发中...')}
         >
           <span style={{ fontSize: '2rem' }}>+</span>
           <span style={{ fontSize: '14px', marginTop: '8px' }}>创建模块</span>
@@ -138,14 +131,8 @@ export default function Home() {
 
       <style jsx global>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
