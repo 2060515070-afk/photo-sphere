@@ -5,159 +5,176 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 interface GestureDetectorProps {
   onRotate?: (deltaX: number, deltaY: number) => void
   onZoom?: (delta: number) => void
-  onSwipe?: (direction: 'left' | 'right' | 'up' | 'down') => void
   enabled?: boolean
 }
 
-type GestureType = 'none' | 'open_palm' | 'fist' | 'pinch' | 'point' | 'swipe'
+type GestureType = 'none' | 'open_palm' | 'fist' | 'pinch' | 'point'
 
 export default function GestureDetector({
   onRotate,
   onZoom,
-  onSwipe,
-  enabled = true,
+  enabled = false,
 }: GestureDetectorProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gesture, setGesture] = useState<GestureType>('none')
   const [cameraActive, setCameraActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const prevPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const prevPosRef = useRef<{ x: number; y: number } | null>(null)
+  const prevPinchRef = useRef<number | null>(null)
   const handsRef = useRef<any>(null)
+  const animFrameRef = useRef<number>(0)
 
-  // 初始化 MediaPipe Hands
+  // 初始化手势识别
   const initHands = useCallback(async () => {
     try {
+      // 动态加载 MediaPipe
       const { Hands } = await import('@mediapipe/hands')
-      const { Camera } = await import('@mediapipe/camera_utils')
 
       const hands = new Hands({
-        locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        locateFile: (file: string) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
         },
       })
 
       hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 0, // 轻量模型
-        minDetectionConfidence: 0.5,
+        modelComplexity: 0,
+        minDetectionConfidence: 0.6,
         minTrackingConfidence: 0.5,
       })
 
-      hands.onResults((results) => {
+      hands.onResults((results: any) => {
         if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
           setGesture('none')
-          prevPositionRef.current = null
+          prevPosRef.current = null
+          prevPinchRef.current = null
           return
         }
 
         const landmarks = results.multiHandLandmarks[0]
-        const detectedGesture = detectGesture(landmarks)
-        setGesture(detectedGesture)
-
-        // 根据手势触发回调
-        handleGestureAction(detectedGesture, landmarks)
+        const detected = detectGesture(landmarks)
+        setGesture(detected)
+        handleGesture(detected, landmarks)
       })
 
       handsRef.current = hands
 
-      // 启动摄像头
+      // 获取摄像头
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 320, height: 240, facingMode: 'user' },
+      })
+
       if (videoRef.current) {
-        const camera = new Camera(videoRef.current, {
-          onFrame: async () => {
-            if (handsRef.current && videoRef.current) {
-              await handsRef.current.send({ image: videoRef.current })
-            }
-          },
-          width: 320,
-          height: 240,
-        })
-        await camera.start()
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
         setCameraActive(true)
+
+        // 逐帧检测
+        const detect = async () => {
+          if (!videoRef.current || !handsRef.current) return
+          if (videoRef.current.readyState >= 2) {
+            await handsRef.current.send({ image: videoRef.current })
+          }
+          animFrameRef.current = requestAnimationFrame(detect)
+        }
+        detect()
       }
-    } catch (err) {
-      setError('无法启动摄像头，请检查权限设置')
-      console.error('MediaPipe init error:', err)
+    } catch (err: any) {
+      console.error('Gesture init error:', err)
+      if (err.name === 'NotAllowedError') {
+        setError('摄像头权限被拒绝，请在浏览器设置中允许')
+      } else {
+        setError('手势识别初始化失败: ' + err.message)
+      }
     }
   }, [])
 
-  // 手势识别
+  // 清理
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
+        tracks.forEach(t => t.stop())
+      }
+    }
+  }, [])
+
+  // 手势识别逻辑
   const detectGesture = (landmarks: any[]): GestureType => {
     const thumbTip = landmarks[4]
     const indexTip = landmarks[8]
     const middleTip = landmarks[12]
     const ringTip = landmarks[16]
     const pinkyTip = landmarks[20]
-    const wrist = landmarks[0]
 
     const indexMcp = landmarks[5]
     const middleMcp = landmarks[9]
     const ringMcp = landmarks[13]
     const pinkyMcp = landmarks[17]
 
-    // 计算手指是否伸直
-    const isIndexExtended = indexTip.y < indexMcp.y
-    const isMiddleExtended = middleTip.y < middleMcp.y
-    const isRingExtended = ringTip.y < ringMcp.y
-    const isPinkyExtended = pinkyTip.y < pinkyMcp.y
+    // 捏合：拇指和食指靠近
+    const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y)
+    if (pinchDist < 0.06) return 'pinch'
 
-    // 捏合手势：拇指和食指靠近
-    const pinchDistance = Math.hypot(
-      thumbTip.x - indexTip.x,
-      thumbTip.y - indexTip.y
-    )
-    if (pinchDistance < 0.05) return 'pinch'
+    // 判断手指是否伸直（指尖 y < 指根 y，因为 y 轴向下）
+    const indexUp = indexTip.y < indexMcp.y
+    const middleUp = middleTip.y < middleMcp.y
+    const ringUp = ringTip.y < ringMcp.y
+    const pinkyUp = pinkyTip.y < pinkyMcp.y
 
-    // 张开手掌：所有手指伸直
-    if (isIndexExtended && isMiddleExtended && isRingExtended && isPinkyExtended) {
-      return 'open_palm'
-    }
+    // 张开手掌：全部伸直
+    if (indexUp && middleUp && ringUp && pinkyUp) return 'open_palm'
 
-    // 握拳：所有手指弯曲
-    if (!isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended) {
-      return 'fist'
-    }
+    // 握拳：全部弯曲
+    if (!indexUp && !middleUp && !ringUp && !pinkyUp) return 'fist'
 
-    // 指向：只有食指伸直
-    if (isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended) {
-      return 'point'
-    }
+    // 指向：只有食指
+    if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point'
 
     return 'none'
   }
 
   // 处理手势动作
-  const handleGestureAction = (gesture: GestureType, landmarks: any[]) => {
+  const handleGesture = (gesture: GestureType, landmarks: any[]) => {
     const indexTip = landmarks[8]
+    const thumbTip = landmarks[4]
 
     if (gesture === 'open_palm') {
-      // 张开手掌 → 旋转照片球
-      if (prevPositionRef.current) {
-        const deltaX = (indexTip.x - prevPositionRef.current.x) * 5
-        const deltaY = (indexTip.y - prevPositionRef.current.y) * 5
-        onRotate?.(deltaX, deltaY)
+      // 手掌移动 → 旋转
+      if (prevPosRef.current) {
+        const dx = (indexTip.x - prevPosRef.current.x) * 8
+        const dy = (indexTip.y - prevPosRef.current.y) * 8
+        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+          onRotate?.(dx, dy)
+        }
       }
-      prevPositionRef.current = { x: indexTip.x, y: indexTip.y }
+      prevPosRef.current = { x: indexTip.x, y: indexTip.y }
+      prevPinchRef.current = null
     } else if (gesture === 'pinch') {
-      // 捏合 → 缩放
-      const thumbTip = landmarks[4]
-      const distance = Math.hypot(
-        thumbTip.x - indexTip.x,
-        thumbTip.y - indexTip.y
-      )
-      onZoom?.(distance > 0.03 ? 0.1 : -0.1)
-      prevPositionRef.current = null
-    } else if (gesture === 'fist') {
-      // 握拳 → 停止
-      prevPositionRef.current = null
+      // 捏合缩放
+      const dist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y)
+      if (prevPinchRef.current !== null) {
+        const delta = (dist - prevPinchRef.current) * 20
+        if (Math.abs(delta) > 0.01) {
+          onZoom?.(delta)
+        }
+      }
+      prevPinchRef.current = dist
+      prevPosRef.current = null
     } else {
-      prevPositionRef.current = null
+      prevPosRef.current = null
+      prevPinchRef.current = null
     }
   }
 
-  // 启动摄像头
-  const startCamera = async () => {
-    await initHands()
+  // 手势图标
+  const gestureIcon: Record<GestureType, string> = {
+    none: '等待手势...',
+    open_palm: '✋ 旋转中',
+    fist: '✊ 暂停',
+    pinch: '🤏 缩放中',
+    point: '☝️ 指向',
   }
 
   if (!enabled) return null
@@ -187,20 +204,8 @@ export default function GestureDetector({
             objectFit: 'cover',
             transform: 'scaleX(-1)',
           }}
-          autoPlay
           playsInline
           muted
-        />
-        <canvas
-          ref={canvasRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-          }}
         />
 
         {/* 手势状态 */}
@@ -215,19 +220,16 @@ export default function GestureDetector({
           fontSize: '11px',
           textAlign: 'center',
           backdropFilter: 'blur(4px)',
+          color: gesture === 'none' ? '#888' : '#a5b4fc',
         }}>
-          {gesture === 'open_palm' && '✋ 旋转中'}
-          {gesture === 'pinch' && '🤏 缩放中'}
-          {gesture === 'fist' && '✊ 已暂停'}
-          {gesture === 'point' && '☝️ 指向'}
-          {gesture === 'none' && '等待手势...'}
+          {gestureIcon[gesture]}
         </div>
       </div>
 
       {/* 启动按钮 */}
       {!cameraActive && (
         <button
-          onClick={startCamera}
+          onClick={initHands}
           style={{
             width: '100%',
             marginTop: '8px',
@@ -240,7 +242,7 @@ export default function GestureDetector({
             fontSize: '12px',
           }}
         >
-          📷 启动手势控制
+          📷 启动手势
         </button>
       )}
 
@@ -253,7 +255,8 @@ export default function GestureDetector({
           border: '1px solid rgba(239,68,68,0.2)',
           borderRadius: '8px',
           color: '#fca5a5',
-          fontSize: '12px',
+          fontSize: '11px',
+          maxWidth: '160px',
         }}>
           {error}
         </div>

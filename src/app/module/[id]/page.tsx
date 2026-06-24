@@ -11,12 +11,12 @@ interface Photo {
   tags: string[]
 }
 
-// 演示用照片数据
+// 演示照片（picsum.photos 随机图）
 const DEMO_PHOTOS: Photo[] = Array.from({ length: 24 }, (_, i) => ({
   id: `photo-${i}`,
-  url: `https://picsum.photos/seed/${i + 10}/800/800`,
-  thumbnail: `https://picsum.photos/seed/${i + 10}/400/400`,
-  tags: ['风景', '人物', '美食', '动物'][i % 4] ? [['风景', '人物', '美食', '动物'][i % 4]] : [],
+  url: `https://picsum.photos/seed/${i + 100}/800/800`,
+  thumbnail: `https://picsum.photos/seed/${i + 100}/400/400`,
+  tags: [['风景'], ['人物'], ['美食'], ['动物']][i % 4],
 }))
 
 const MODULE_NAMES: Record<string, { name: string; icon: string }> = {
@@ -38,45 +38,53 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const [loading, setLoading] = useState(true)
   const [gestureEnabled, setGestureEnabled] = useState(false)
 
+  // 手势控制状态
+  const [rotationDelta, setRotationDelta] = useState<{ x: number; y: number } | null>(null)
+  const [zoomDelta, setZoomDelta] = useState<number | null>(null)
+
   const moduleInfo = MODULE_NAMES[id] || { name: '自定义模块', icon: '📁' }
 
   useEffect(() => {
-    // TODO: 从 Supabase 加载该模块的照片
-    // 暂时用演示数据
+    // TODO: 从 Supabase 加载照片
     setTimeout(() => {
       setPhotos(DEMO_PHOTOS)
       setLoading(false)
     }, 500)
   }, [id])
 
+  // 手势回调
+  const handleRotate = (dx: number, dy: number) => {
+    setRotationDelta({ x: dx, y: dy })
+    // 100ms 后清除，避免累积
+    setTimeout(() => setRotationDelta(null), 100)
+  }
+
+  const handleZoom = (delta: number) => {
+    setZoomDelta(delta)
+    setTimeout(() => setZoomDelta(null), 100)
+  }
+
   return (
     <div style={{ minHeight: '100vh' }}>
-      {/* 模块头部 */}
+      {/* 头部 */}
       <div style={{
-        padding: '24px',
+        padding: '20px 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a
-            href="/"
-            style={{
-              color: '#8888a0',
-              textDecoration: 'none',
-              fontSize: '14px',
-            }}
-          >
+          <a href="/" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>
             ← 返回
           </a>
           <span style={{ fontSize: '1.5rem' }}>{moduleInfo.icon}</span>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
-          <span style={{ fontSize: '13px', color: '#8888a0' }}>
-            {photos.length} 张
-          </span>
+          <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
+          <span style={{ fontSize: '13px', color: '#8888a0' }}>{photos.length} 张</span>
         </div>
 
-        {/* 视图切换 */}
+        {/* 控制按钮 */}
         <div style={{
           display: 'flex',
           gap: '4px',
@@ -130,7 +138,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      {/* 内容区域 */}
+      {/* 内容 */}
       {loading ? (
         <div style={{
           display: 'flex',
@@ -145,20 +153,16 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
         <PhotoSphere
           photos={photos}
           onPhotoClick={setSelectedPhoto}
+          rotationDelta={rotationDelta}
+          zoomDelta={zoomDelta}
         />
       ) : (
         <div className="photo-grid" style={{ maxWidth: '1200px', margin: '0 auto' }}>
           {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className="photo-item"
-              onClick={() => setSelectedPhoto(photo)}
-            >
+            <div key={photo.id} className="photo-item" onClick={() => setSelectedPhoto(photo)}>
               <img src={photo.thumbnail} alt="" loading="lazy" />
               {photo.tags.length > 0 && (
-                <span className="classification-badge">
-                  {photo.tags[0]}
-                </span>
+                <span className="classification-badge">{photo.tags[0]}</span>
               )}
             </div>
           ))}
@@ -168,28 +172,15 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
       {/* 手势控制 */}
       <GestureDetector
         enabled={gestureEnabled}
-        onRotate={(dx, dy) => {
-          // TODO: 控制 Three.js 场景旋转
-          console.log('rotate', dx, dy)
-        }}
-        onZoom={(delta) => {
-          // TODO: 控制 Three.js 场景缩放
-          console.log('zoom', delta)
-        }}
+        onRotate={handleRotate}
+        onZoom={handleZoom}
       />
 
       {/* 照片查看器 */}
       {selectedPhoto && (
-        <div
-          className="photo-viewer"
-          onClick={() => setSelectedPhoto(null)}
-        >
+        <div className="photo-viewer" onClick={() => setSelectedPhoto(null)}>
           <div style={{ position: 'relative' }}>
-            <img
-              src={selectedPhoto.url}
-              alt=""
-              style={{ maxHeight: '85vh' }}
-            />
+            <img src={selectedPhoto.url} alt="" style={{ maxHeight: '85vh' }} />
             <button
               onClick={() => setSelectedPhoto(null)}
               style={{
@@ -205,14 +196,8 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
             >
               ✕
             </button>
-            {/* 照片标签 */}
             {selectedPhoto.tags.length > 0 && (
-              <div style={{
-                display: 'flex',
-                gap: '6px',
-                marginTop: '12px',
-                justifyContent: 'center',
-              }}>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '12px', justifyContent: 'center' }}>
                 {selectedPhoto.tags.map((tag) => (
                   <span key={tag} className="tag">{tag}</span>
                 ))}
