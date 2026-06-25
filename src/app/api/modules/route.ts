@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     const { data: module, error } = await supabase
       .from('modules')
       .insert({
+        id: crypto.randomUUID(),
         name,
         icon: icon || '📁',
         is_system: false,

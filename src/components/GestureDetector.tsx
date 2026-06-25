@@ -141,11 +141,15 @@ export default function GestureDetector({
     const thumbTip = landmarks[4]
 
     if (gesture === 'open_palm') {
-      // 手掌移动 → 旋转
+      // 手掌移动 → 旋转（带平滑）
       if (prevPosRef.current) {
-        const dx = (indexTip.x - prevPosRef.current.x) * 8
-        const dy = (indexTip.y - prevPosRef.current.y) * 8
-        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+        const rawDx = (indexTip.x - prevPosRef.current.x) * 20
+        const rawDy = (indexTip.y - prevPosRef.current.y) * 20
+        // 死区过滤 + 平滑
+        if (Math.abs(rawDx) > 0.005 || Math.abs(rawDy) > 0.005) {
+          const smooth = 0.4 // 平滑系数，越小越平滑
+          const dx = rawDx * smooth
+          const dy = rawDy * smooth
           onRotate?.(dx, dy)
         }
       }
@@ -155,7 +159,7 @@ export default function GestureDetector({
       // 捏合缩放
       const dist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y)
       if (prevPinchRef.current !== null) {
-        const delta = (dist - prevPinchRef.current) * 20
+        const delta = (dist - prevPinchRef.current) * 200
         if (Math.abs(delta) > 0.01) {
           onZoom?.(delta)
         }

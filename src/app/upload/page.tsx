@@ -9,6 +9,8 @@ interface UploadFile {
   status: 'pending' | 'uploading' | 'done' | 'error'
   progress: number
   classification?: string
+  photoId?: string
+  error?: string
 }
 
 export default function UploadPage() {
@@ -32,9 +34,7 @@ export default function UploadPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    if (e.dataTransfer.files) {
-      handleFiles(e.dataTransfer.files)
-    }
+    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files)
   }, [handleFiles])
 
   const removeFile = (index: number) => {
@@ -53,41 +53,54 @@ export default function UploadPage() {
       if (files[i].status === 'done') continue
 
       setFiles(prev => {
-        const newFiles = [...prev]
-        newFiles[i] = { ...newFiles[i], status: 'uploading', progress: 0 }
-        return newFiles
+        const n = [...prev]; n[i] = { ...n[i], status: 'uploading', progress: 5 }; return n
       })
 
       try {
-        // TODO: 上传到 Supabase Storage
-        // 模拟上传进度
-        for (let p = 0; p <= 100; p += 20) {
-          await new Promise(r => setTimeout(r, 200))
-          setFiles(prev => {
-            const newFiles = [...prev]
-            newFiles[i] = { ...newFiles[i], progress: p }
-            return newFiles
-          })
+        const formData = new FormData()
+        formData.append('file', files[i].file)
+        formData.append('moduleId', 'other')
+
+        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 20 }; return n })
+
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+
+        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 50 }; return n })
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json()
+          throw new Error(errData.error || '上传失败')
         }
 
-        // TODO: 调用 AI 分类 API
-        const classification = '其他' // 临时
+        const uploadData = await uploadRes.json()
+
+        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 70, photoId: uploadData.photo.id }; return n })
+
+        // AI 分类
+        let classification = '其他'
+        try {
+          const classifyRes = await fetch('/api/classify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl: uploadData.photo.url }),
+          })
+          if (classifyRes.ok) {
+            const classifyData = await classifyRes.json()
+            classification = classifyData.label || '其他'
+            await fetch('/api/photos', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: uploadData.photo.id, moduleId: classifyData.category, tags: [classification] }),
+            })
+          }
+        } catch { /* 分类失败不影响上传 */ }
 
         setFiles(prev => {
-          const newFiles = [...prev]
-          newFiles[i] = {
-            ...newFiles[i],
-            status: 'done',
-            progress: 100,
-            classification,
-          }
-          return newFiles
+          const n = [...prev]; n[i] = { ...n[i], status: 'done', progress: 100, classification }; return n
         })
-      } catch {
+      } catch (err: any) {
         setFiles(prev => {
-          const newFiles = [...prev]
-          newFiles[i] = { ...newFiles[i], status: 'error' }
-          return newFiles
+          const n = [...prev]; n[i] = { ...n[i], status: 'error', error: err.message || '上传失败' }; return n
         })
       }
     }
@@ -95,39 +108,39 @@ export default function UploadPage() {
     setUploading(false)
   }
 
+  const doneCount = files.filter(f => f.status === 'done').length
+  const errorCount = files.filter(f => f.status === 'error').length
+
   return (
     <div style={{ minHeight: '100vh', padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
-      <h1 style={{
-        fontSize: '1.8rem',
-        fontWeight: 600,
-        marginBottom: '8px',
-      }}>
-        上传照片
-      </h1>
-      <p style={{ color: '#8888a0', marginBottom: '32px', fontSize: '14px' }}>
-        支持 JPG、PNG、WebP，AI 将自动识别并分类
-      </p>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 600, marginBottom: '8px' }}>上传照片</h1>
+        <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，AI 将自动识别并分类</p>
+      </div>
 
       {/* 拖拽上传区域 */}
       <div
         className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
         style={{
-          padding: '60px 24px',
-          textAlign: 'center',
-          cursor: 'pointer',
-          marginBottom: '24px',
+          padding: '60px 24px', textAlign: 'center', cursor: 'pointer', marginBottom: '24px',
+          transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+          transform: dragOver ? 'scale(1.01)' : 'scale(1)',
         }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>☁️</div>
-        <p style={{ fontSize: '16px', marginBottom: '8px' }}>
-          拖拽照片到这里，或点击选择
+        <div style={{
+          fontSize: '3.5rem', marginBottom: '16px',
+          transition: 'transform 0.3s',
+          transform: dragOver ? 'translateY(-8px) scale(1.1)' : 'none',
+        }}>☁️</div>
+        <p style={{ fontSize: '16px', marginBottom: '8px', fontWeight: 500 }}>
+          {dragOver ? '松开即可上传' : '拖拽照片到这里，或点击选择'}
         </p>
         <p style={{ fontSize: '13px', color: '#8888a0' }}>
-          支持批量上传，AI 自动分类
+          支持批量上传，AI 自动分类到对应模块
         </p>
         <input
           ref={fileInputRef}
@@ -142,97 +155,101 @@ export default function UploadPage() {
       {/* 文件列表 */}
       {files.length > 0 && (
         <div>
+          {/* 操作栏 */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
+            padding: '12px 16px', background: 'rgba(255,255,255,0.02)',
+            borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)',
           }}>
-            <span style={{ fontSize: '14px', color: '#8888a0' }}>
-              {files.length} 张照片
-            </span>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+              <span style={{ color: '#8888a0' }}>📁 {files.length} 张</span>
+              {doneCount > 0 && <span style={{ color: '#22c55e' }}>✅ {doneCount} 完成</span>}
+              {errorCount > 0 && <span style={{ color: '#ef4444' }}>❌ {errorCount} 失败</span>}
+            </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => setFiles([])}
+                onClick={() => { files.forEach(f => URL.revokeObjectURL(f.preview)); setFiles([]) }}
                 style={{
-                  padding: '8px 16px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: '#8888a0',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  padding: '8px 16px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                  color: '#8888a0', cursor: 'pointer', fontSize: '13px',
                 }}
               >
                 清空
               </button>
+              {doneCount > 0 && (
+                <button
+                  onClick={() => router.push('/')}
+                  style={{
+                    padding: '8px 16px', background: 'rgba(34,197,94,0.15)',
+                    border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px',
+                    color: '#86efac', cursor: 'pointer', fontSize: '13px',
+                  }}
+                >
+                  查看照片 →
+                </button>
+              )}
               <button
                 onClick={startUpload}
-                disabled={uploading}
+                disabled={uploading || files.every(f => f.status === 'done')}
                 style={{
-                  padding: '8px 20px',
+                  padding: '8px 24px',
                   background: uploading ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.8)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
+                  border: 'none', borderRadius: '8px', color: '#fff',
                   cursor: uploading ? 'not-allowed' : 'pointer',
-                  fontSize: '13px',
-                  fontWeight: 500,
+                  fontSize: '13px', fontWeight: 600,
+                  transition: 'all 0.2s',
                 }}
               >
-                {uploading ? '上传中...' : '开始上传'}
+                {uploading ? `上传中... (${doneCount}/${files.length})` :
+                 files.every(f => f.status === 'done') ? '全部完成' : '开始上传'}
               </button>
             </div>
           </div>
 
+          {/* 文件网格 */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: '12px',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px',
           }}>
             {files.map((f, i) => (
               <div
                 key={i}
                 style={{
-                  position: 'relative',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  aspectRatio: '1',
+                  position: 'relative', borderRadius: '12px', overflow: 'hidden', aspectRatio: '1',
+                  opacity: 0, animation: `fadeIn 0.3s ease forwards ${i * 0.05}s`,
                 }}
               >
                 <img
                   src={f.preview}
                   alt=""
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    opacity: f.status === 'uploading' ? 0.6 : 1,
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    opacity: f.status === 'uploading' ? 0.5 : 1,
+                    filter: f.status === 'error' ? 'grayscale(0.5)' : 'none',
+                    transition: 'all 0.3s',
                   }}
                 />
 
-                {/* 进度条 */}
+                {/* 上传进度条 */}
                 {f.status === 'uploading' && (
                   <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
+                    position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px',
                     background: 'rgba(0,0,0,0.3)',
                   }}>
                     <div style={{
-                      height: '100%',
-                      width: `${f.progress}%`,
-                      background: '#6366f1',
-                      transition: 'width 0.2s',
+                      height: '100%', width: `${f.progress}%`,
+                      background: 'linear-gradient(90deg, #6366f1, #818cf8)',
+                      transition: 'width 0.3s ease',
+                      boxShadow: '0 0 8px rgba(99,102,241,0.5)',
                     }} />
                   </div>
                 )}
 
                 {/* 分类标签 */}
                 {f.classification && (
-                  <span className="classification-badge">
+                  <span className="classification-badge" style={{
+                    opacity: 0, animation: 'fadeIn 0.3s ease 0.2s forwards',
+                  }}>
                     {f.classification}
                   </span>
                 )}
@@ -240,19 +257,24 @@ export default function UploadPage() {
                 {/* 完成标记 */}
                 {f.status === 'done' && (
                   <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: '#22c55e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
+                    position: 'absolute', top: '8px', right: '8px',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: 700,
+                    animation: 'popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                    boxShadow: '0 2px 8px rgba(34,197,94,0.4)',
+                  }}>✓</div>
+                )}
+
+                {/* 错误提示 */}
+                {f.status === 'error' && (
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    padding: '6px 8px', background: 'rgba(239,68,68,0.85)',
+                    fontSize: '11px', textAlign: 'center',
+                    animation: 'slideUp 0.3s ease',
                   }}>
-                    ✓
+                    {f.error || '上传失败'}
                   </div>
                 )}
 
@@ -260,27 +282,14 @@ export default function UploadPage() {
                 <button
                   onClick={(e) => { e.stopPropagation(); removeFile(i) }}
                   style={{
-                    position: 'absolute',
-                    top: '8px',
-                    left: '8px',
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.5)',
-                    border: 'none',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
-                    opacity: 0,
-                    transition: 'opacity 0.2s',
+                    position: 'absolute', top: '8px', left: '8px',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', opacity: 0, transition: 'opacity 0.2s',
                   }}
                   className="delete-btn"
-                >
-                  ×
-                </button>
+                >×</button>
               </div>
             ))}
           </div>
@@ -288,9 +297,12 @@ export default function UploadPage() {
       )}
 
       <style jsx>{`
-        div:hover > .delete-btn {
-          opacity: 1;
-        }
+        div:hover > .delete-btn { opacity: 1; }
+      `}</style>
+      <style jsx global>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
       `}</style>
     </div>
   )

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('photos')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
