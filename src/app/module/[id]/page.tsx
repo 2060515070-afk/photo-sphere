@@ -73,7 +73,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const isDemo = realPhotos.length === 0
 
   useEffect(() => {
-    fetch(`/api/photos?moduleId=${id}&limit=500`)
+    fetch(`/api/photos?moduleId=${id}&limit=200`)
       .then(r => r.json())
       .then(d => setRealPhotos(d.photos || []))
       .catch(() => {})
@@ -105,15 +105,44 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
 
   // ───────── 手势核心 ─────────
   const detectGesture = useCallback((lm: any[]) => {
-    // 拇指尖(4)和食指尖(8)距离
-    const pinch = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y)
-    if (pinch < 0.07) return 'pinch'
-    // 判断手指是否伸直
-    const up = (tip: number, mcp: number) => lm[tip].y < lm[mcp].y
-    const i = up(8, 5), m = up(12, 9), r = up(16, 13), p = up(20, 17)
-    if (i && m && r && p) return 'open_palm'
-    if (!i && !m && !r && !p) return 'fist'
-    if (i && !m && !r && !p) return 'point'
+    // 用「手指弯曲度」判断 —— 比单纯 y 坐标更准
+    const curl = (tip: number, dip: number, pip: number, mcp: number) => {
+      // 计算指尖到指根的直线距离 vs 指节总长，越小说明越弯曲
+      const tipToMcp = Math.hypot(lm[tip].x - lm[mcp].x, lm[tip].y - lm[mcp].y, lm[tip].z - lm[mcp].z)
+      const totalLen =
+        Math.hypot(lm[tip].x - lm[dip].x, lm[tip].y - lm[dip].y, lm[tip].z - lm[dip].z) +
+        Math.hypot(lm[dip].x - lm[pip].x, lm[dip].y - lm[pip].y, lm[dip].z - lm[pip].z) +
+        Math.hypot(lm[pip].x - lm[mcp].x, lm[pip].y - lm[mcp].y, lm[pip].z - lm[mcp].z)
+      return tipToMcp / (totalLen + 0.001) // 0~1，越小越弯曲
+    }
+
+    // 食指(8,6,5,5) 中指(12,10,9,9) 无名指(16,14,13,13) 小指(20,18,17,17)
+    const ci = curl(8, 6, 5, 5)
+    const cm = curl(12, 10, 9, 9)
+    const cr = curl(16, 14, 13, 13)
+    const cp = curl(20, 18, 17, 17)
+    // 拇指(4,3,2,1)
+    const ct = curl(4, 3, 2, 1)
+
+    const fingerUp = (c: number) => c > 0.6  // 弯曲度 > 0.6 算伸直
+    const fingerDown = (c: number) => c < 0.45 // 弯曲度 < 0.45 算弯曲
+
+    const iUp = fingerUp(ci), mUp = fingerUp(cm), rUp = fingerUp(cr), pUp = fingerUp(cp)
+    const iDown = fingerDown(ci), mDown = fingerDown(cm), rDown = fingerDown(cr), pDown = fingerDown(cp)
+
+    // 捏合：拇指尖(4)和食指尖(8)非常近，且其他手指伸直
+    const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y, lm[4].z - lm[8].z)
+    if (pinchDist < 0.05 && ct > 0.4) return 'pinch'
+
+    // 张开手掌：全部伸直
+    if (iUp && mUp && rUp && pUp) return 'open_palm'
+
+    // 握拳：全部弯曲
+    if (iDown && mDown && rDown && pDown) return 'fist'
+
+    // 指向：只有食指伸直
+    if (iUp && mDown && rDown && pDown) return 'point'
+
     return 'none'
   }, [])
 
@@ -166,9 +195,9 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
 
       hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 0,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.4,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.5,
       })
 
       // 手势回调 — 写入 ref，不触发 React 渲染
@@ -196,7 +225,6 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
             const rawDx = (lm[8].x - prevPosRef.current.x) * 18
             const rawDy = (lm[8].y - prevPosRef.current.y) * 18
             if (Math.abs(rawDx) > 0.003 || Math.abs(rawDy) > 0.003) {
-              // 平滑系数：0.35 有效消除抖动
               const smooth = 0.35
               gestureRotationRef.current = { x: rawDx * smooth, y: rawDy * smooth }
             }
@@ -209,10 +237,10 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
             setGestureStatus('🤏 缩放中')
             gestureStatusRef.current = '🤏 缩放中'
           }
-          const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y)
+          const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y, lm[4].z - lm[8].z)
           if (prevPinchRef.current !== null) {
-            const delta = (d - prevPinchRef.current) * 150
-            if (Math.abs(delta) > 0.005) {
+            const delta = (d - prevPinchRef.current) * 200
+            if (Math.abs(delta) > 0.003) {
               gestureZoomRef.current = delta
             }
           }
@@ -275,7 +303,16 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
   }, [])
 
-  const getThumb = (photo: Photo) => photo.thumbnail || photo.url || ''
+  const getThumb = (photo: Photo) => {
+    const url = photo.thumbnail || photo.url || ''
+    if (!url) return ''
+    // 网格视图用中等缩略图：200x200
+    if (url.includes('supabase')) {
+      const base = url.split('?')[0]
+      return `${base}?width=200&height=200&resize=cover&quality=60`
+    }
+    return url
+  }
 
   // 查看器动画
   const viewerOverlayStyle: React.CSSProperties = {

@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     // 生成唯一文件名
     const ext = file.name.split('.').pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const filePath = `photos/${fileName}`
+    // bucket 已经叫 'photos'，路径不要再加 photos/ 前缀
+    const filePath = fileName
 
     // 上传到 Supabase Storage
     const buffer = await file.arrayBuffer()
@@ -40,8 +41,8 @@ export async function POST(request: NextRequest) {
       .from('photos')
       .getPublicUrl(filePath)
 
-    // 创建缩略图 URL（Supabase 图片变换）
-    const thumbnailUrl = `${urlData.publicUrl}?width=400&height=400&resize=cover`
+    // 创建缩略图 URL（小尺寸，加速加载）
+    const thumbnailUrl = `${urlData.publicUrl}?width=200&height=200&resize=cover&quality=60`
 
     // 保存到数据库
     const { data: photo, error: dbError } = await supabase

@@ -19,9 +19,17 @@ export async function GET() {
       return NextResponse.json({ error: '查询失败' }, { status: 500 })
     }
 
+    // 先查总数（给"全部照片"用）
+    const { count: totalCount } = await supabase
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+
     // 统计每个模块的照片数量
     const modulesWithCount = await Promise.all(
       (modules || []).map(async (mod) => {
+        if (mod.id === 'all') {
+          return { ...mod, count: totalCount || 0 }
+        }
         const { count } = await supabase
           .from('photos')
           .select('*', { count: 'exact', head: true })

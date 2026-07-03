@@ -1,0 +1,440 @@
+'use client'
+
+import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls, Html } from '@react-three/drei'
+import * as THREE from 'three'
+
+interface Photo {
+  id: string
+  url: string
+  thumbnail: string
+  tags: string[]
+}
+
+interface PhotoSphereProps {
+  photos: Photo[]
+  onPhotoClick?: (photo: Photo) => void
+  gestureRotationRef?: React.MutableRefObject<{ x: number; y: number } | null>
+  gestureZoomRef?: React.MutableRefObject<number | null>
+}
+
+const COLORS = [
+  '#6366f1', '#f43f5e', '#10b981', '#f59e0b',
+  '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6',
+  '#ef4444', '#3b82f6', '#84cc16', '#f97316',
+]
+
+// 单张漂浮照片 — 始终朝向球心
+function FloatingPhoto({
+  photo,
+  position,
+  index,
+  onClick,
+}: {
+  photo: Photo
+  position: [number, number, number]
+  index: number
+  onClick?: () => void
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+  const meshRef = useRef<THREE.Mesh>(null)
+  const hoveredRef = useRef(false)
+  const [hovered, setHovered] = useState(false)
+  const frozenPos = useRef<{ x: number; y: number; z: number } | null>(null)
+
+  const tag = photo.tags?.[0] || '📷'
+  const emojis: Record<string, string> = {
+    '风景': '🏔️', '人物': '👤', '美食': '🍜', '动物': '🐾',
+    '建筑': '🏛️', '自然': '🌿', '夜景': '🌙', '海边': '🏖️',
+    '截图': '📱', '文档': '📄', '自拍': '🤳', '合照': '👥',
+    '宠物': '🐕', '花卉': '🌸',
+  }
+  const emoji = emojis[tag] || '📷'
+  const imgUrl = photo.thumbnail || photo.url
+  const hasImage = imgUrl
+  const [imgError, setImgError] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
+
+  const lookAtQuat = useMemo(() => {
+    const dir = new THREE.Vector3(...position).normalize()
+    const m = new THREE.Matrix4()
+    m.lookAt(new THREE.Vector3(0, 0, 0), dir, new THREE.Vector3(0, 1, 0))
+    const q = new THREE.Quaternion()
+    q.setFromRotationMatrix(m)
+    return q
+  }, [position])
+
+  const onOver = useCallback(() => {
+    hoveredRef.current = true
+    setHovered(true)
+    document.body.style.cursor = 'pointer'
+  }, [])
+  const onOut = useCallback(() => {
+    hoveredRef.current = false
+    setHovered(false)
+    frozenPos.current = null
+    document.body.style.cursor = 'default'
+  }, [])
+
+  useFrame((state) => {
+    if (!groupRef.current || !meshRef.current) return
+    const t = state.clock.elapsedTime
+    const h = hoveredRef.current
+    if (!h) {
+      const baseY = position[1] + Math.sin(t * 0.6 + position[0] * 1.5) * 0.08
+      groupRef.current.position.set(position[0], baseY, position[2])
+      groupRef.current.quaternion.copy(lookAtQuat)
+      frozenPos.current = null
+    } else {
+      // 冻结位置 — 只存一次
+      if (!frozenPos.current) {
+        frozenPos.current = {
+          x: groupRef.current.position.x,
+          y: groupRef.current.position.y,
+          z: groupRef.current.position.z,
+        }
+      }
+      groupRef.current.position.set(frozenPos.current.x, frozenPos.current.y, frozenPos.current.z)
+    }
+    const s = h ? 1.3 : 1
+    meshRef.current.scale.lerp(new THREE.Vector3(s, s, s), 0.12)
+  })
+
+  return (
+    <group ref={groupRef} position={position}>
+      {/* 透明碰撞区域 — 用于点击和 hover 检测 */}
+      <mesh
+        ref={meshRef}
+        onClick={(e) => { e.stopPropagation(); onClick?.() }}
+        onPointerOver={onOver}
+        onPointerOut={onOut}
+      >
+        <planeGeometry args={[1.2, 1.2]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {/* 悬浮照片 — 纯照片，无背景板 */}
+      <Html center style={{ pointerEvents: 'none', userSelect: 'none' }} distanceFactor={5}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          width: '80px', height: '80px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+          transition: 'transform 0.2s ease',
+          transform: hovered ? 'scale(1.3)' : 'scale(1)',
+        }}>
+          {hasImage && !imgError ? (
+            <img
+              src={imgUrl}
+              alt=""
+              loading="lazy"
+              crossOrigin="anonymous"
+              style={{
+                width: '76px', height: '76px', objectFit: 'cover',
+                borderRadius: '10px',
+                boxShadow: hovered
+                  ? '0 0 20px rgba(99,102,241,0.6), 0 4px 20px rgba(0,0,0,0.5)'
+                  : '0 2px 12px rgba(0,0,0,0.4)',
+                border: hovered
+                  ? '2px solid rgba(165,180,252,0.6)'
+                  : '2px solid rgba(255,255,255,0.15)',
+                opacity: imgLoaded ? 1 : 0,
+                transition: 'opacity 0.3s ease, box-shadow 0.2s ease, border 0.2s ease',
+              }}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <>
+              <span style={{ fontSize: '30px' }}>{emoji}</span>
+              <span style={{ fontSize: '10px', marginTop: '3px', opacity: 0.7 }}>{tag}</span>
+            </>
+          )}
+        </div>
+      </Html>
+    </group>
+  )
+}
+
+// 多层 Fibonacci 球形分布
+// 根据照片数量自动计算层数和半径，确保所有照片围成球形
+function fibonacciSphereMultiLayer(n: number): [number, number, number][] {
+  if (n === 0) return []
+
+  // 每层最多放多少张照片（密度适中，不会太挤）
+  const maxPerLayer = 20
+  const layerCount = Math.max(1, Math.ceil(n / maxPerLayer))
+
+  // 基础半径：照片越多球越大
+  const baseRadius = Math.max(3.5, Math.min(6, Math.sqrt(n) * 0.8))
+  const layerGap = 2 // 层间距
+
+  const pos: [number, number, number][] = []
+  const phi = (1 + Math.sqrt(5)) / 2
+
+  let remaining = n
+  for (let layer = 0; layer < layerCount; layer++) {
+    // 每层分配的照片数：最后一层拿剩余的
+    const count = layer < layerCount - 1
+      ? Math.min(maxPerLayer, Math.ceil(n / layerCount))
+      : remaining
+    const radius = baseRadius + layer * layerGap
+
+    for (let i = 0; i < count; i++) {
+      const theta = (2 * Math.PI * i) / phi + layer * 0.3 // 每层错开角度
+      const z = 1 - (2 * (i + 0.5)) / count
+      const r = Math.sqrt(1 - z * z)
+      pos.push([
+        radius * r * Math.cos(theta),
+        radius * r * Math.sin(theta),
+        radius * z,
+      ])
+    }
+    remaining -= count
+  }
+  return pos
+}
+
+// ✨ 闪烁星光粒子
+function SparkleParticles() {
+  const ref = useRef<THREE.Points>(null)
+  const count = 2000
+  const data = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    const sizes = new Float32Array(count)
+    const phases = new Float32Array(count)
+    const colors = new Float32Array(count * 3)
+    const palette = [
+      [0.39, 0.4, 0.94], // indigo
+      [0.96, 0.25, 0.37], // rose
+      [0.06, 0.72, 0.51], // emerald
+      [0.96, 0.62, 0.04], // amber
+      [0.55, 0.36, 0.96], // violet
+      [0.02, 0.71, 0.83], // cyan
+      [0.93, 0.29, 0.6],  // pink
+    ]
+    for (let i = 0; i < count; i++) {
+      // 分布在球壳外层，不遮挡照片
+      const r = 7 + Math.random() * 12
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos(2 * Math.random() - 1)
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
+      pos[i * 3 + 2] = r * Math.cos(phi)
+      sizes[i] = 0.02 + Math.random() * 0.06
+      phases[i] = Math.random() * Math.PI * 2
+      const c = palette[Math.floor(Math.random() * palette.length)]
+      colors[i * 3] = c[0]
+      colors[i * 3 + 1] = c[1]
+      colors[i * 3 + 2] = c[2]
+    }
+    return { pos, sizes, phases, colors }
+  }, [])
+
+  useFrame((state) => {
+    if (!ref.current) return
+    const t = state.clock.elapsedTime
+    ref.current.rotation.y = t * 0.01
+    ref.current.rotation.x = Math.sin(t * 0.003) * 0.1
+    // 闪烁效果
+    const geo = ref.current.geometry
+    const sizeAttr = geo.getAttribute('size') as THREE.BufferAttribute
+    if (sizeAttr) {
+      for (let i = 0; i < count; i++) {
+        const base = data.sizes[i]
+        const flicker = Math.sin(t * 2 + data.phases[i]) * 0.5 + 0.5
+        sizeAttr.setX(i, base * (0.3 + flicker * 0.7))
+      }
+      sizeAttr.needsUpdate = true
+    }
+  })
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[data.pos, 3]} />
+        <bufferAttribute attach="attributes-color" args={[data.colors, 3]} />
+        <bufferAttribute attach="attributes-size" args={[data.sizes, 1]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.05}
+        vertexColors
+        transparent
+        opacity={0.8}
+        sizeAttenuation
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
+  )
+}
+
+// 🔮 球心光晕（增强版）
+function GlowSphere() {
+  const ref1 = useRef<THREE.Mesh>(null)
+  const ref2 = useRef<THREE.Mesh>(null)
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (ref1.current) {
+      const s1 = 0.2 + Math.sin(t * 0.8) * 0.05
+      ref1.current.scale.set(s1, s1, s1)
+      ref1.current.rotation.y = t * 0.2
+    }
+    if (ref2.current) {
+      const s2 = 0.35 + Math.sin(t * 0.5 + 1) * 0.08
+      ref2.current.scale.set(s2, s2, s2)
+      ref2.current.rotation.y = -t * 0.15
+    }
+  })
+  return (
+    <>
+      <mesh ref={ref1}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial color="#6366f1" transparent opacity={0.15} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh ref={ref2}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial color="#8b5cf6" transparent opacity={0.08} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </>
+  )
+}
+
+// 🌌 深空背景粒子（远处微小尘埃）
+function DeepSpaceDust() {
+  const ref = useRef<THREE.Points>(null)
+  const count = 600
+  const positions = useMemo(() => {
+    const arr = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 40
+      arr[i * 3 + 1] = (Math.random() - 0.5) * 40
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 40
+    }
+    return arr
+  }, [])
+
+  useFrame((state) => {
+    if (!ref.current) return
+    ref.current.rotation.y = state.clock.elapsedTime * 0.003
+    ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.002) * 0.05
+  })
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.025} color="#7c7caa" transparent opacity={0.2} sizeAttenuation depthWrite={false} />
+    </points>
+  )
+}
+
+// 3D 场景 — 通过 ref 读取手势数据
+function Scene({
+  photos,
+  onPhotoClick,
+  gestureRotationRef,
+  gestureZoomRef,
+}: PhotoSphereProps) {
+  const positions = useMemo(() => {
+    return fibonacciSphereMultiLayer(photos.length)
+  }, [photos.length])
+
+  const groupRef = useRef<THREE.Group>(null)
+
+  useFrame((state) => {
+    if (!groupRef.current) return
+    // 缓慢自转
+    groupRef.current.rotation.y += 0.002
+
+    // 读取手势旋转（从 ref，每帧消费后清空）
+    if (gestureRotationRef?.current) {
+      const { x, y } = gestureRotationRef.current
+      groupRef.current.rotation.y += x * 0.15
+      groupRef.current.rotation.x += y * 0.15
+      groupRef.current.rotation.x = Math.max(-1.2, Math.min(1.2, groupRef.current.rotation.x))
+      gestureRotationRef.current = null // 消费完毕
+    }
+
+    // 读取手势缩放
+    if (gestureZoomRef?.current) {
+      const cam = state.camera
+      const dir = new THREE.Vector3()
+      cam.getWorldDirection(dir)
+      cam.position.addScaledVector(dir, -gestureZoomRef.current * 1.5)
+      const dist = cam.position.length()
+      if (dist < 3) cam.position.setLength(3)
+      if (dist > 18) cam.position.setLength(18)
+      gestureZoomRef.current = null // 消费完毕
+    }
+  })
+
+  return (
+    <>
+      <ambientLight intensity={0.5} />
+      <pointLight position={[10, 10, 10]} intensity={0.3} />
+      <pointLight position={[-8, -6, -8]} intensity={0.2} color="#8b5cf6" />
+      <OrbitControls
+        enablePan={false}
+        enableZoom
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={3}
+        maxDistance={18}
+        zoomSpeed={0.5}
+        rotateSpeed={0.6}
+      />
+      <group ref={groupRef}>
+        {photos.map((photo, i) => (
+          <FloatingPhoto
+            key={photo.id}
+            photo={photo}
+            position={positions[i] || [0, 0, 0]}
+            index={i}
+            onClick={() => onPhotoClick?.(photo)}
+          />
+        ))}
+      </group>
+      <GlowSphere />
+      <SparkleParticles />
+      <DeepSpaceDust />
+    </>
+  )
+}
+
+// 主组件
+export default function PhotoSphere({
+  photos,
+  onPhotoClick,
+  gestureRotationRef,
+  gestureZoomRef,
+}: PhotoSphereProps) {
+  if (photos.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 24px', color: '#8888a0' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🌐</div>
+        <p>没有照片可以展示</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="sphere-container">
+      <Canvas
+        camera={{ position: [0, 0, 10], fov: 55 }}
+        style={{ background: 'transparent' }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: true }}
+      >
+        <Scene
+          photos={photos}
+          onPhotoClick={onPhotoClick}
+          gestureRotationRef={gestureRotationRef}
+          gestureZoomRef={gestureZoomRef}
+        />
+      </Canvas>
+      <div className="gesture-indicator">
+        🖱️ 拖拽旋转 · 滚轮缩放 · 点击查看 · {photos.length} 张照片
+      </div>
+    </div>
+  )
+}
