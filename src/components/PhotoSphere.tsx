@@ -102,8 +102,8 @@ export default function PhotoSphere({
     let url = photo.thumbnail || photo.url
     if (!url) return ''
     if (url.includes('supabase')) {
-      const base = url.split('?')[0]
-      // 3D球形用超小缩略图：80x80, quality=30, 极速加载
+      // Supabase 图片变换必须用 /render/image/ 路径
+      const base = url.split('?')[0].replace('/object/public/', '/render/image/public/')
       return `${base}?width=80&height=80&resize=cover&quality=30`
     }
     return url

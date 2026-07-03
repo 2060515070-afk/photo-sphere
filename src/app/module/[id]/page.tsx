@@ -308,7 +308,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
     if (!url) return ''
     // 网格视图用中等缩略图：200x200
     if (url.includes('supabase')) {
-      const base = url.split('?')[0]
+      const base = url.split('?')[0].replace('/object/public/', '/render/image/public/')
       return `${base}?width=200&height=200&resize=cover&quality=60`
     }
     return url
