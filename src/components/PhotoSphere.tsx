@@ -253,7 +253,7 @@ export default function PhotoSphere({
       {/* 弥散光晕 */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.05) 0%, transparent 60%)',
+        background: 'radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.03) 0%, transparent 60%)',
       }} />
 
 
