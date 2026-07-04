@@ -181,10 +181,17 @@ export default function PhotoSphere({
 
   const handlePointerUp = useCallback(() => { isDragging.current = false }, [])
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    targetDist.current += e.deltaY * 0.8
-    targetDist.current = Math.max(200, Math.min(1000, targetDist.current))
+  // 用原生事件监听器替代 React onWheel（passive 无法 preventDefault）
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      targetDist.current += e.deltaY * 0.8
+      targetDist.current = Math.max(200, Math.min(1000, targetDist.current))
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
   }, [])
 
   if (photos.length === 0) {
@@ -204,7 +211,7 @@ export default function PhotoSphere({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onWheel={handleWheel}
+
       style={{
         cursor: isDragging.current ? 'grabbing' : 'grab',
         perspective: '550px',
