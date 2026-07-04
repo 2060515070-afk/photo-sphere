@@ -93,7 +93,7 @@ export default function PhotoSphere({
   const photoMeta = useMemo(() =>
     displayPhotos.map(() => ({
       size: 52 + Math.floor(Math.random() * 24),
-      opacity: 0.65 + Math.random() * 0.35,
+      opacity: 1,
     })),
     [displayPhotos.length]
   )
