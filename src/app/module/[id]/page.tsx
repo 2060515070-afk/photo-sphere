@@ -225,7 +225,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           if (prevPosRef.current) {
             const rawDx = (lm[8].x - prevPosRef.current.x) * 12
             const rawDy = (lm[8].y - prevPosRef.current.y) * 12
-            if (Math.abs(rawDx) > 0.003 || Math.abs(rawDy) > 0.003) {
+            if (Math.abs(rawDx) > 0.001 || Math.abs(rawDy) > 0.001) {
               const smooth = 0.55
               gestureRotationRef.current = { x: rawDx * smooth, y: rawDy * smooth }
             }

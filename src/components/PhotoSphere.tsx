@@ -126,10 +126,8 @@ export default function PhotoSphere({
       }
 
       if (gestureZoomRef?.current) {
-        // 直接修改 dist，不走 ease 平滑，消除延迟
-        const zoomDelta = gestureZoomRef.current * 80
-        dist.current = Math.max(200, Math.min(1000, dist.current - zoomDelta))
-        targetDist.current = dist.current
+        targetDist.current -= gestureZoomRef.current * 120
+        targetDist.current = Math.max(200, Math.min(1000, targetDist.current))
         gestureZoomRef.current = null
       }
 
