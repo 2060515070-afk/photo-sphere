@@ -113,7 +113,7 @@ export default function PhotoSphere({
     return Array.from({ length: 100 }, (_, i) => {
       const phi = Math.acos(2 * Math.random() - 1)
       const theta = 2 * Math.PI * Math.random()
-      const r = orbitR * (0.6 + Math.random() * 0.4)
+      const r = orbitR * (0.7 + Math.random() * 0.3)
       return {
         id: i,
         x: r * Math.sin(phi) * Math.cos(theta),
@@ -282,7 +282,8 @@ export default function PhotoSphere({
         ref={innerRef}
         style={{
           position: 'relative',
-          width: 0, height: 0,
+          width: '1px', height: '1px',
+          overflow: 'visible',
           transformStyle: 'preserve-3d',
           transform: 'rotateX(-15deg) rotateY(0deg)',
           '--crx': '15deg',
