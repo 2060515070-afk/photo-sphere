@@ -86,15 +86,15 @@ export default function PhotoSphere({
   // 粒子数据
   const particles = useMemo(() => {
     const colors = [
-      'rgba(99,102,241,0.6)', 'rgba(139,92,246,0.5)', 'rgba(236,72,153,0.4)',
-      'rgba(59,130,246,0.5)', 'rgba(16,185,129,0.4)', 'rgba(255,255,255,0.2)',
+      'rgba(129,140,255,0.9)', 'rgba(167,139,250,0.75)', 'rgba(244,114,182,0.6)',
+      'rgba(96,165,250,0.75)', 'rgba(52,211,153,0.6)', 'rgba(255,255,255,0.35)',
     ]
     return Array.from({ length: 300 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
       size: 2 + Math.random() * 4,
-      opacity: 0.2 + Math.random() * 0.5,
+      opacity: 0.3 + Math.random() * 0.7,
       duration: 4 + Math.random() * 6,
       delay: Math.random() * 5,
       color: colors[i % colors.length],
