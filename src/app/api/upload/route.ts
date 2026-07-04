@@ -10,23 +10,22 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const moduleId = formData.get('moduleId') as string || 'all'
+    const moduleId = formData.get('moduleId') as string || 'other'
+    const userId = formData.get('userId') as string || null
 
     if (!file) {
-      return NextResponse.json({ error: '没有文件' }, { status: 400 })
+      return NextResponse.json({ error: '缺少文件' }, { status: 400 })
     }
 
-    // 生成唯一文件名
-    const ext = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    // bucket 已经叫 'photos'，路径不要再加 photos/ 前缀
-    const filePath = fileName
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
-    // 上传到 Supabase Storage
-    const buffer = await file.arrayBuffer()
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
     const { error: uploadError } = await supabase.storage
       .from('photos')
-      .upload(filePath, buffer, {
+      .upload(`photos/${fileName}`, buffer, {
         contentType: file.type,
         upsert: false,
       })
@@ -36,26 +35,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '上传失败' }, { status: 500 })
     }
 
-    // 获取公开 URL
     const { data: urlData } = supabase.storage
       .from('photos')
-      .getPublicUrl(filePath)
+      .getPublicUrl(`photos/${fileName}`)
 
-    // 创建缩略图 URL（小尺寸，加速加载）
-    const thumbnailUrl = `${urlData.publicUrl}?width=200&height=200&resize=cover&quality=60`
-
-    // 保存到数据库
     const { data: photo, error: dbError } = await supabase
       .from('photos')
       .insert({
         url: urlData.publicUrl,
-        thumbnail: thumbnailUrl,
+        thumbnail: urlData.publicUrl,
         file_name: file.name,
-        file_size: file.size,
-        mime_type: file.type,
-        module_id: moduleId,
         tags: [],
-        faces: [],
+        module_id: moduleId,
+        user_id: userId,
       })
       .select()
       .single()
@@ -65,14 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '保存失败' }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      photo: {
-        id: photo.id,
-        url: urlData.publicUrl,
-        thumbnail: thumbnailUrl,
-      },
-    })
+    return NextResponse.json({ success: true, photo })
   } catch (err) {
     console.error('Upload error:', err)
     return NextResponse.json({ error: '服务器错误' }, { status: 500 })
