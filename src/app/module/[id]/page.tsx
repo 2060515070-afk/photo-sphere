@@ -55,6 +55,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const [gestureStatus, setGestureStatus] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [viewerAnim, setViewerAnim] = useState<'idle' | 'entering' | 'visible' | 'leaving'>('idle')
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   // 手势数据用 ref — 直接传递给 Three.js，不走 React 状态
   const gestureRotationRef = useRef<{ x: number; y: number } | null>(null)
@@ -298,6 +299,23 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
     gestureStatusRef.current = ''
   }, [])
 
+  // 全屏状态监听
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        await document.documentElement.requestFullscreen()
+      }
+    } catch {}
+  }, [])
+
   useEffect(() => () => {
     if (animRef.current) cancelAnimationFrame(animRef.current)
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
@@ -346,6 +364,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           <button onClick={() => setViewMode('sphere')} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: viewMode === 'sphere' ? 'rgba(99,102,241,0.2)' : 'transparent', color: viewMode === 'sphere' ? '#a5b4fc' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>🌐 球形</button>
           <button onClick={() => setViewMode('grid')} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: viewMode === 'grid' ? 'rgba(99,102,241,0.2)' : 'transparent', color: viewMode === 'grid' ? '#a5b4fc' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>▦ 网格</button>
           <button onClick={gestureEnabled ? stopGesture : startGesture} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: gestureEnabled ? 'rgba(34,197,94,0.2)' : 'transparent', color: gestureEnabled ? '#86efac' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>🤚 {gestureEnabled ? '关闭手势' : '手势'}</button>
+          <button onClick={toggleFullscreen} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: isFullscreen ? 'rgba(255,255,255,0.1)' : 'transparent', color: isFullscreen ? '#fff' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>{isFullscreen ? '✕ 退出全屏' : '⛶ 全屏'}</button>
         </div>
       </div>
 
