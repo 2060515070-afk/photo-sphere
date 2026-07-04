@@ -44,49 +44,58 @@ export default function UploadPage() {
     })
   }
 
-  const startUpload = async () => {
-    setUploading(true)
+  const uploadOne = async (i: number) => {
+    setFiles(prev => {
+      const n = [...prev]; n[i] = { ...n[i], status: 'uploading', progress: 5 }; return n
+    })
 
-    for (let i = 0; i < files.length; i++) {
-      if (files[i].status === 'done') continue
+    try {
+      const formData = new FormData()
+      formData.append('file', files[i].file)
+      formData.append('moduleId', 'other')
+      const stored = localStorage.getItem('photoSphereUser')
+      if (stored) {
+        try { formData.append('userId', JSON.parse(stored).id) } catch {}
+      }
+
+      setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 20 }; return n })
+
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+
+      setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 70 }; return n })
+
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json()
+        throw new Error(errData.error || '上传失败')
+      }
 
       setFiles(prev => {
-        const n = [...prev]; n[i] = { ...n[i], status: 'uploading', progress: 5 }; return n
+        const n = [...prev]; n[i] = { ...n[i], status: 'done', progress: 100 }; return n
       })
-
-      try {
-        const formData = new FormData()
-        formData.append('file', files[i].file)
-        formData.append('moduleId', 'other')
-        const stored = localStorage.getItem('photoSphereUser')
-        if (stored) {
-          try { formData.append('userId', JSON.parse(stored).id) } catch {}
-        }
-
-        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 20 }; return n })
-
-        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
-
-        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 50 }; return n })
-
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json()
-          throw new Error(errData.error || '上传失败')
-        }
-
-        const uploadData = await uploadRes.json()
-
-        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 70 }; return n })
-
-        setFiles(prev => {
-          const n = [...prev]; n[i] = { ...n[i], status: 'done', progress: 100 }; return n
-        })
-      } catch (err: any) {
-        setFiles(prev => {
-          const n = [...prev]; n[i] = { ...n[i], status: 'error', error: err.message || '上传失败' }; return n
-        })
-      }
+    } catch (err: any) {
+      setFiles(prev => {
+        const n = [...prev]; n[i] = { ...n[i], status: 'error', error: err.message || '上传失败' }; return n
+      })
     }
+  }
+
+  const startUpload = async () => {
+    setUploading(true)
+    const CONCURRENCY = 3
+    const pending: number[] = []
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].status !== 'done') pending.push(i)
+    }
+
+    // 并发池
+    let idx = 0
+    const workers = Array.from({ length: Math.min(CONCURRENCY, pending.length) }, async () => {
+      while (idx < pending.length) {
+        const i = pending[idx++]
+        await uploadOne(i)
+      }
+    })
+    await Promise.all(workers)
 
     setUploading(false)
   }
