@@ -89,7 +89,7 @@ export default function PhotoSphere({
       'rgba(99,102,241,0.6)', 'rgba(139,92,246,0.5)', 'rgba(236,72,153,0.4)',
       'rgba(59,130,246,0.5)', 'rgba(16,185,129,0.4)', 'rgba(255,255,255,0.2)',
     ]
-    return Array.from({ length: 30 }, (_, i) => ({
+    return Array.from({ length: 300 }, (_, i) => (
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
