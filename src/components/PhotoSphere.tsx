@@ -81,7 +81,6 @@ export default function PhotoSphere({
   const targetDist = useRef(550)
   const frameRef = useRef(0)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const frameCount = useRef(0)
 
   // 背景粒子
   const bgParticles = useMemo(() => {
@@ -163,21 +162,16 @@ export default function PhotoSphere({
       rot.current.y += (targetRot.current.y - rot.current.y) * ease
       dist.current += (targetDist.current - dist.current) * ease
 
-      // 每 2 帧更新一次 DOM（减少 50% 开销）
-      frameCount.current++
-      if (frameCount.current % 2 === 0) {
-        const el = innerRef.current
-        if (el) {
-          el.style.transform = `rotateX(${rot.current.x}deg) rotateY(${rot.current.y}deg)`
-          // 反向旋转让照片面向摄像机
-          el.style.setProperty('--crx', `${-rot.current.x}deg`)
-          el.style.setProperty('--cry', `${-rot.current.y}deg`)
-
-        }
-        const container = containerRef.current
-        if (container) {
-          container.style.perspective = `${dist.current}px`
-        }
+      // 每帧更新 DOM
+      const el = innerRef.current
+      if (el) {
+        el.style.transform = `rotateX(${rot.current.x}deg) rotateY(${rot.current.y}deg)`
+        el.style.setProperty('--crx', `${-rot.current.x}deg`)
+        el.style.setProperty('--cry', `${-rot.current.y}deg`)
+      }
+      const container = containerRef.current
+      if (container) {
+        container.style.perspective = `${dist.current}px`
       }
 
       frameRef.current = requestAnimationFrame(animate)
