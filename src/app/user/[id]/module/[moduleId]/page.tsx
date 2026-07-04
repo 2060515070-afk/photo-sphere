@@ -47,6 +47,7 @@ function makeDemoPhotos(): Photo[] {
 
 export default function ModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: userId, moduleId } = use(params) as { id: string; moduleId: string }
+  const [moduleInfo, setModuleInfo] = useState({ name: '加载中...', icon: '📁' })
   const [realPhotos, setRealPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
@@ -69,9 +70,23 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const streamRef = useRef<MediaStream | null>(null)
   const gestureStatusRef = useRef('')
 
-  const moduleInfo = moduleId === 'all' ? { name: '全部照片', icon: '📸' } : (MODULE_NAMES[moduleId] || { name: '自定义模块', icon: '📁' })
+  const moduleInfo2 = moduleId === 'all' ? { name: '全部照片', icon: '📸' } : (MODULE_NAMES[moduleId] || moduleInfo)
   const photos = realPhotos.length > 0 ? realPhotos : makeDemoPhotos()
   const isDemo = realPhotos.length === 0
+
+  useEffect(() => {
+    if (moduleId === 'all') return
+    const stored = localStorage.getItem('photoSphereUser')
+    if (!stored) return
+    const uid = JSON.parse(stored).id
+    fetch(`/api/modules?userId=${uid}`)
+      .then(r => r.json())
+      .then(d => {
+        const mod = (d.modules || []).find((m: any) => m.id === moduleId)
+        if (mod) setModuleInfo({ name: mod.name, icon: mod.icon || '📁' })
+      })
+      .catch(() => {})
+  }, [moduleId])
 
   useEffect(() => {
     const qs = new URLSearchParams({ userId, limit: '200' })
@@ -358,8 +373,8 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
       <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <a href="/home" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>← 返回</a>
-          <span style={{ fontSize: '1.5rem' }}>{moduleInfo.icon}</span>
-          <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
+          <span style={{ fontSize: '1.5rem' }}>{moduleInfo2.icon}</span>
+          <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo2.name}</h1>
           <span style={{ fontSize: '13px', color: '#8888a0' }}>{isDemo ? `${photos.length} 演示` : `${photos.length} 张`}</span>
         </div>
         <div style={{ display: 'flex', gap: '4px', padding: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>

@@ -69,9 +69,23 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const streamRef = useRef<MediaStream | null>(null)
   const gestureStatusRef = useRef('')
 
-  const moduleInfo = MODULE_NAMES[id] || { name: '自定义模块', icon: '📁' }
+  const [moduleInfo, setModuleInfo] = useState(MODULE_NAMES[id] || { name: '加载中...', icon: '📁' })
   const photos = realPhotos.length > 0 ? realPhotos : makeDemoPhotos()
   const isDemo = realPhotos.length === 0
+
+  useEffect(() => {
+    if (MODULE_NAMES[id]) return
+    const stored = localStorage.getItem('photoSphereUser')
+    if (!stored) return
+    const userId = JSON.parse(stored).id
+    fetch(`/api/modules?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => {
+        const mod = (d.modules || []).find((m: any) => m.id === id)
+        if (mod) setModuleInfo({ name: mod.name, icon: mod.icon || '📁' })
+      })
+      .catch(() => {})
+  }, [id])
 
   useEffect(() => {
     const stored = localStorage.getItem('photoSphereUser')
