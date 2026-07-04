@@ -118,15 +118,15 @@ export default function PhotoSphere({
       lastTime = now
 
       if (gestureRotationRef?.current) {
-        targetRot.current.y += gestureRotationRef.current.x * 120
-        targetRot.current.x += gestureRotationRef.current.y * 120
+        targetRot.current.y += gestureRotationRef.current.x * 300
+        targetRot.current.x += gestureRotationRef.current.y * 300
         targetRot.current.x = Math.max(-89, Math.min(89, targetRot.current.x))
         gestureRotationRef.current = null
         autoSpeed.current = 0
       }
 
       if (gestureZoomRef?.current) {
-        targetDist.current -= gestureZoomRef.current * 120
+        targetDist.current -= gestureZoomRef.current * 300
         targetDist.current = Math.max(200, Math.min(1000, targetDist.current))
         gestureZoomRef.current = null
       }
@@ -136,7 +136,7 @@ export default function PhotoSphere({
         autoSpeed.current = Math.min(0.1, autoSpeed.current + 0.0005 * dt)
       }
 
-      const ease = 0.18 * dt
+      const ease = 0.08 * dt
       rot.current.x += (targetRot.current.x - rot.current.x) * ease
       rot.current.y += (targetRot.current.y - rot.current.y) * ease
       dist.current += (targetDist.current - dist.current) * ease

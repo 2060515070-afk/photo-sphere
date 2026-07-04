@@ -223,10 +223,10 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
             gestureStatusRef.current = '✋ 旋转中'
           }
           if (prevPosRef.current) {
-            const rawDx = (lm[8].x - prevPosRef.current.x) * 12
-            const rawDy = (lm[8].y - prevPosRef.current.y) * 12
-            if (Math.abs(rawDx) > 0.001 || Math.abs(rawDy) > 0.001) {
-              const smooth = 0.55
+            const rawDx = (lm[8].x - prevPosRef.current.x) * 18
+            const rawDy = (lm[8].y - prevPosRef.current.y) * 18
+            if (Math.abs(rawDx) > 0.003 || Math.abs(rawDy) > 0.003) {
+              const smooth = 0.35
               gestureRotationRef.current = { x: rawDx * smooth, y: rawDy * smooth }
             }
           }
@@ -240,8 +240,10 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           }
           const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y, lm[4].z - lm[8].z)
           if (prevPinchRef.current !== null) {
-            const delta = (d - prevPinchRef.current) * 150
-            gestureZoomRef.current = delta
+            const delta = (d - prevPinchRef.current) * 200
+            if (Math.abs(delta) > 0.003) {
+              gestureZoomRef.current = delta
+            }
           }
           prevPinchRef.current = d
           prevPosRef.current = null
