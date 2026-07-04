@@ -360,7 +360,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
           <span style={{ fontSize: '13px', color: '#8888a0' }}>{isDemo ? `${photos.length} 演示` : `${photos.length} 张`}</span>
         </div>
-        <div style={{ display: 'flex', gap: '4px', padding: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', gap: '4px', padding: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
           <button onClick={() => setViewMode('sphere')} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: viewMode === 'sphere' ? 'rgba(99,102,241,0.2)' : 'transparent', color: viewMode === 'sphere' ? '#a5b4fc' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>🌐 球形</button>
           <button onClick={() => setViewMode('grid')} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: viewMode === 'grid' ? 'rgba(99,102,241,0.2)' : 'transparent', color: viewMode === 'grid' ? '#a5b4fc' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>▦ 网格</button>
           <button onClick={gestureEnabled ? stopGesture : startGesture} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: gestureEnabled ? 'rgba(34,197,94,0.2)' : 'transparent', color: gestureEnabled ? '#86efac' : '#8888a0', cursor: 'pointer', fontSize: '13px' }}>🤚 {gestureEnabled ? '关闭手势' : '手势'}</button>
@@ -395,7 +395,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           <div className="photo-grid" style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {photos.map((p, i) => (
               <div key={p.id} className="photo-item" onClick={() => openViewer(p)} style={{
-                opacity: 0, animation: `fadeIn 0.4s ease forwards ${i * 0.03}s`,
+                opacity: 0, animation: `fadeIn 0.4s ease forwards ${i * 0.1}s`,
                 background: isDemo ? COLORS[i % COLORS.length] : undefined,
                 display: isDemo ? 'flex' : undefined, alignItems: isDemo ? 'center' : undefined,
                 justifyContent: isDemo ? 'center' : undefined, fontSize: isDemo ? '2rem' : undefined,
