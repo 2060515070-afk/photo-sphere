@@ -225,7 +225,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           if (prevPosRef.current) {
             const rawDx = (lm[8].x - prevPosRef.current.x) * 18
             const rawDy = (lm[8].y - prevPosRef.current.y) * 18
-            if (Math.abs(rawDx) > 0.012 || Math.abs(rawDy) > 0.012) {
+            if (Math.abs(rawDx) > 0.03 || Math.abs(rawDy) > 0.03) {
               const smooth = 0.35
               gestureRotationRef.current = { x: rawDx * smooth, y: rawDy * smooth }
             }
@@ -241,7 +241,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y, lm[4].z - lm[8].z)
           if (prevPinchRef.current !== null) {
             const delta = (d - prevPinchRef.current) * 200
-            if (Math.abs(delta) > 0.012) {
+            if (Math.abs(delta) > 0.03) {
               gestureZoomRef.current = delta
             }
           }
