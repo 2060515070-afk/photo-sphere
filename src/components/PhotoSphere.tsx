@@ -256,7 +256,7 @@ export default function PhotoSphere({
         background: 'radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.05) 0%, transparent 60%)',
       }} />
 
-      {/* 粒子效果 */}
+      {/* 背景粒子 */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
         {particles.map((p) => (
           <div key={p.id} style={{
@@ -266,20 +266,6 @@ export default function PhotoSphere({
             borderRadius: '50%',
             background: `radial-gradient(circle, ${p.color}, transparent)`,
             opacity: p.opacity,
-            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
-          }} />
-        ))}
-        {/* 银白环绕粒子 */}
-        {orbitParticles.map((p) => (
-          <div key={`orbit-${p.id}`} style={{
-            position: 'absolute',
-            left: `${50 + p.x}%`, top: `${50 + p.y}%`,
-            width: `${p.size}px`, height: `${p.size}px`,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.3))',
-            boxShadow: '0 0 8px rgba(255,255,255,0.5)',
-            opacity: p.opacity,
-            pointerEvents: 'none',
             animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
           }} />
         ))}
@@ -375,6 +361,22 @@ export default function PhotoSphere({
         })}
 
 
+      </div>
+
+      {/* 银白环绕粒子（在球体上层） */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 20 }}>
+        {orbitParticles.map((p) => (
+          <div key={`orbit-${p.id}`} style={{
+            position: 'absolute',
+            left: `${50 + p.x}%`, top: `${50 + p.y}%`,
+            width: `${p.size}px`, height: `${p.size}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.3))',
+            boxShadow: '0 0 8px rgba(255,255,255,0.5)',
+            opacity: p.opacity,
+            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
+          }} />
+        ))}
       </div>
 
       <div className="gesture-indicator">
