@@ -8,8 +8,6 @@ interface UploadFile {
   preview: string
   status: 'pending' | 'uploading' | 'done' | 'error'
   progress: number
-  classification?: string
-  photoId?: string
   error?: string
 }
 
@@ -78,29 +76,10 @@ export default function UploadPage() {
 
         const uploadData = await uploadRes.json()
 
-        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 70, photoId: uploadData.photo.id }; return n })
-
-        // AI 分类
-        let classification = '其他'
-        try {
-          const classifyRes = await fetch('/api/classify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl: uploadData.photo.url }),
-          })
-          if (classifyRes.ok) {
-            const classifyData = await classifyRes.json()
-            classification = classifyData.label || '其他'
-            await fetch('/api/photos', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: uploadData.photo.id, moduleId: classifyData.category, tags: [classification] }),
-            })
-          }
-        } catch { /* 分类失败不影响上传 */ }
+        setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 70 }; return n })
 
         setFiles(prev => {
-          const n = [...prev]; n[i] = { ...n[i], status: 'done', progress: 100, classification }; return n
+          const n = [...prev]; n[i] = { ...n[i], status: 'done', progress: 100 }; return n
         })
       } catch (err: any) {
         setFiles(prev => {
@@ -119,7 +98,7 @@ export default function UploadPage() {
     <div style={{ minHeight: '100vh', padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 600, marginBottom: '8px' }}>上传照片</h1>
-        <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，AI 将自动识别并分类</p>
+        <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，支持批量上传</p>
         <a href="/home" style={{ color: '#8888a0', fontSize: '13px', textDecoration: 'none' }}>← 返回空间</a>
       </div>
 
@@ -145,7 +124,7 @@ export default function UploadPage() {
           {dragOver ? '松开即可上传' : '拖拽照片到这里，或点击选择'}
         </p>
         <p style={{ fontSize: '13px', color: '#8888a0' }}>
-          支持批量上传，AI 自动分类到对应模块
+          支持批量上传
         </p>
         <input
           ref={fileInputRef}
@@ -250,14 +229,7 @@ export default function UploadPage() {
                   </div>
                 )}
 
-                {/* 分类标签 */}
-                {f.classification && (
-                  <span className="classification-badge" style={{
-                    opacity: 0, animation: 'fadeIn 0.3s ease 0.2s forwards',
-                  }}>
-                    {f.classification}
-                  </span>
-                )}
+
 
                 {/* 完成标记 */}
                 {f.status === 'done' && (
