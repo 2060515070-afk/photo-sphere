@@ -101,6 +101,12 @@ export default function PhotoSphere({
     }))
   }, [])
 
+  // 照片数量
+  const MAX = 80
+  const displayPhotos = useMemo(() => photos.slice(0, MAX), [photos])
+  const radius = useMemo(() => Math.max(200, Math.min(380, 15 * Math.sqrt(displayPhotos.length))), [displayPhotos.length])
+  const positions = useMemo(() => diffuseSphere(displayPhotos.length, radius), [displayPhotos.length, radius])
+
   // 跟随球体转动的银白粒子
   const orbitParticles = useMemo(() => {
     const orbitR = radius * 1.1
@@ -119,12 +125,6 @@ export default function PhotoSphere({
       }
     })
   }, [radius])
-
-  // 照片数量
-  const MAX = 80
-  const displayPhotos = useMemo(() => photos.slice(0, MAX), [photos])
-  const radius = useMemo(() => Math.max(200, Math.min(380, 15 * Math.sqrt(displayPhotos.length))), [displayPhotos.length])
-  const positions = useMemo(() => diffuseSphere(displayPhotos.length, radius), [displayPhotos.length, radius])
 
   // 预生成每张照片的固定尺寸和透明度（不随帧变化）
   const photoMeta = useMemo(() =>
