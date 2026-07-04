@@ -23,29 +23,46 @@ function UploadContent() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [moduleName, setModuleName] = useState('其他')
+  const [modules, setModules] = useState<any[]>([])
+  const [selectedModuleId, setSelectedModuleId] = useState('')
   const otherModuleIdRef = useRef('other')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const targetModuleId = searchParams.get('moduleId')
 
-  // 如果 URL 带了 moduleId，直接用；否则获取 "其他" 模块 ID
   useEffect(() => {
-    if (targetModuleId) {
-      otherModuleIdRef.current = targetModuleId
-      return
-    }
     const stored = localStorage.getItem('photoSphereUser')
     if (!stored) return
     const userId = JSON.parse(stored).id
     fetch(`/api/modules?userId=${userId}`)
       .then(r => r.json())
       .then(d => {
-        const otherMod = (d.modules || []).find((m: any) => m.name === '其他')
-        if (otherMod) otherModuleIdRef.current = otherMod.id
+        const mods = (d.modules || []).filter((m: any) => m.name !== '全部照片')
+        setModules(mods)
+        const moduleId = searchParams.get('moduleId')
+        if (moduleId) {
+          otherModuleIdRef.current = moduleId
+          setSelectedModuleId(moduleId)
+          const mod = mods.find((m: any) => m.id === moduleId)
+          if (mod) setModuleName(mod.name)
+        } else {
+          const otherMod = mods.find((m: any) => m.name === '其他')
+          if (otherMod) {
+            otherModuleIdRef.current = otherMod.id
+            setSelectedModuleId(otherMod.id)
+          }
+        }
       })
       .catch(() => {})
-  }, [targetModuleId])
+  }, [searchParams])
+
+  const switchModule = (moduleId: string) => {
+    otherModuleIdRef.current = moduleId
+    setSelectedModuleId(moduleId)
+    const mod = modules.find((m: any) => m.id === moduleId)
+    if (mod) setModuleName(mod.name)
+  }
 
   const handleFiles = useCallback((newFiles: FileList | File[]) => {
     const arr = Array.from(newFiles).filter(f => f.type.startsWith('image/'))
@@ -74,6 +91,8 @@ function UploadContent() {
   }
 
   const uploadOne = async (i: number) => {
+    const moduleId = otherModuleIdRef.current
+    console.log('Uploading to module:', moduleId)
     setFiles(prev => {
       const n = [...prev]; n[i] = { ...n[i], status: 'uploading', progress: 5 }; return n
     })
@@ -81,7 +100,7 @@ function UploadContent() {
     try {
       const formData = new FormData()
       formData.append('file', files[i].file)
-      formData.append('moduleId', otherModuleIdRef.current)
+      formData.append('moduleId', moduleId)
       const stored = localStorage.getItem('photoSphereUser')
       if (stored) {
         try { formData.append('userId', JSON.parse(stored).id) } catch {}
@@ -137,7 +156,17 @@ function UploadContent() {
     <div style={{ minHeight: '100vh', padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 600, marginBottom: '8px' }}>上传照片</h1>
-        <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，支持批量上传</p>
+        <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，支持批量上传 · 上传到：</p>
+        <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {modules.map(m => (
+            <button key={m.id} onClick={() => switchModule(m.id)} style={{
+              padding: '6px 14px', borderRadius: '8px', border: 'none', fontSize: '13px',
+              background: selectedModuleId === m.id ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.05)',
+              color: selectedModuleId === m.id ? '#a5b4fc' : '#8888a0',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}>{m.icon} {m.name}</button>
+          ))}
+        </div>
         <a href="/home" style={{ color: '#8888a0', fontSize: '13px', textDecoration: 'none' }}>← 返回空间</a>
       </div>
 
