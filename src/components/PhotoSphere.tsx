@@ -104,7 +104,7 @@ export default function PhotoSphere({
     if (url.includes('supabase')) {
       // Supabase 图片变换必须用 /render/image/ 路径
       const base = url.split('?')[0].replace('/object/public/', '/render/image/public/')
-      return `${base}?width=200&height=200&resize=cover&quality=70`
+      return `${base}?width=400&height=400&resize=cover&quality=90`
     }
     return url
   }, [])
