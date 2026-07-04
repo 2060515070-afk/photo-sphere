@@ -84,7 +84,7 @@ export default function PhotoSphere({
   const frameCount = useRef(0)
 
   // 照片数量
-  const MAX = 50
+  const MAX = 80
   const displayPhotos = useMemo(() => photos.slice(0, MAX), [photos])
   const radius = useMemo(() => Math.max(200, Math.min(380, 15 * Math.sqrt(displayPhotos.length))), [displayPhotos.length])
   const positions = useMemo(() => diffuseSphere(displayPhotos.length, radius), [displayPhotos.length, radius])
