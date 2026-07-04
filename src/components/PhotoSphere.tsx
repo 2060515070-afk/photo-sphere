@@ -83,7 +83,7 @@ export default function PhotoSphere({
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const frameCount = useRef(0)
 
-  // 粒子数据
+  // 背景粒子数据（静止）
   const particles = useMemo(() => {
     const colors = [
       'rgba(129,140,255,0.9)', 'rgba(167,139,250,0.75)', 'rgba(244,114,182,0.6)',
@@ -100,6 +100,25 @@ export default function PhotoSphere({
       color: colors[i % colors.length],
     }))
   }, [])
+
+  // 跟随球体转动的银白粒子
+  const orbitParticles = useMemo(() => {
+    const orbitR = radius * 1.1
+    return Array.from({ length: 100 }, (_, i) => {
+      const phi = Math.acos(2 * Math.random() - 1)
+      const theta = 2 * Math.PI * Math.random()
+      const r = orbitR * (0.85 + Math.random() * 0.3)
+      return {
+        id: i,
+        x: r * Math.sin(phi) * Math.cos(theta),
+        y: r * Math.sin(phi) * Math.sin(theta),
+        z: r * Math.cos(phi),
+        size: 1.5 + Math.random() * 2.5,
+        opacity: 0.4 + Math.random() * 0.6,
+        delay: Math.random() * 4,
+      }
+    })
+  }, [radius])
 
   // 照片数量
   const MAX = 80
@@ -346,6 +365,22 @@ export default function PhotoSphere({
             </div>
           )
         })}
+
+        {/* 跟随球体转动的银白粒子 */}
+        {orbitParticles.map((p) => (
+          <div key={`orbit-${p.id}`} style={{
+            position: 'absolute',
+            width: `${p.size}px`, height: `${p.size}px`,
+            left: `${-p.size / 2}px`, top: `${-p.size / 2}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.4))',
+            boxShadow: '0 0 6px rgba(255,255,255,0.6)',
+            transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotateY(var(--cry)) rotateX(var(--crx))`,
+            opacity: p.opacity,
+            pointerEvents: 'none',
+            animation: `particle-float ${3 + p.delay}s ease-in-out ${p.delay}s infinite alternate`,
+          }} />
+        ))}
       </div>
 
       <div className="gesture-indicator">
