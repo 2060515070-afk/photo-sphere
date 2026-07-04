@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface UploadFile {
   file: File
@@ -12,12 +12,40 @@ interface UploadFile {
 }
 
 export default function UploadPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8888a0' }}>加载中...</div>}>
+      <UploadContent />
+    </Suspense>
+  )
+}
+
+function UploadContent() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const otherModuleIdRef = useRef('other')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const targetModuleId = searchParams.get('moduleId')
+
+  // 如果 URL 带了 moduleId，直接用；否则获取 "其他" 模块 ID
+  useEffect(() => {
+    if (targetModuleId) {
+      otherModuleIdRef.current = targetModuleId
+      return
+    }
+    const stored = localStorage.getItem('photoSphereUser')
+    if (!stored) return
+    const userId = JSON.parse(stored).id
+    fetch(`/api/modules?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => {
+        const otherMod = (d.modules || []).find((m: any) => m.name === '其他')
+        if (otherMod) otherModuleIdRef.current = otherMod.id
+      })
+      .catch(() => {})
+  }, [targetModuleId])
 
   const handleFiles = useCallback((newFiles: FileList | File[]) => {
     const arr = Array.from(newFiles).filter(f => f.type.startsWith('image/'))
@@ -82,18 +110,6 @@ export default function UploadPage() {
 
   const startUpload = async () => {
     setUploading(true)
-
-    // 获取用户的 "其他" 模块 ID
-    try {
-      const stored = localStorage.getItem('photoSphereUser')
-      if (stored) {
-        const userId = JSON.parse(stored).id
-        const modRes = await fetch(`/api/modules?userId=${userId}`)
-        const modData = await modRes.json()
-        const otherMod = (modData.modules || []).find((m: any) => m.name === '其他')
-        if (otherMod) otherModuleIdRef.current = otherMod.id
-      }
-    } catch {}
 
     const CONCURRENCY = 3
     const pending: number[] = []
