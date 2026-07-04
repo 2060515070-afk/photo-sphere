@@ -15,6 +15,7 @@ export default function UploadPage() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const otherModuleIdRef = useRef('other')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -52,7 +53,7 @@ export default function UploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', files[i].file)
-      formData.append('moduleId', 'other')
+      formData.append('moduleId', otherModuleIdRef.current)
       const stored = localStorage.getItem('photoSphereUser')
       if (stored) {
         try { formData.append('userId', JSON.parse(stored).id) } catch {}
@@ -81,6 +82,19 @@ export default function UploadPage() {
 
   const startUpload = async () => {
     setUploading(true)
+
+    // 获取用户的 "其他" 模块 ID
+    try {
+      const stored = localStorage.getItem('photoSphereUser')
+      if (stored) {
+        const userId = JSON.parse(stored).id
+        const modRes = await fetch(`/api/modules?userId=${userId}`)
+        const modData = await modRes.json()
+        const otherMod = (modData.modules || []).find((m: any) => m.name === '其他')
+        if (otherMod) otherModuleIdRef.current = otherMod.id
+      }
+    } catch {}
+
     const CONCURRENCY = 3
     const pending: number[] = []
     for (let i = 0; i < files.length; i++) {

@@ -95,8 +95,11 @@ export default function Home() {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
         gap: '16px', maxWidth: '1100px', margin: '0 auto',
       }}>
-        {modules.map((mod, index) => (
-          <a key={mod.id} href={`/user/${userId}/module/${mod.id}`} className="glass-card"
+        {modules.map((mod, index) => {
+          const isAll = index === 0 && mod.is_system
+          const href = isAll ? `/user/${userId}/module/all` : `/user/${userId}/module/${mod.id}`
+          return (
+          <a key={mod.id} href={href} className="glass-card"
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               padding: '28px 20px', textDecoration: 'none', color: 'inherit', cursor: 'pointer',
@@ -108,7 +111,7 @@ export default function Home() {
               {mod.count > 0 ? `${mod.count} 张` : '空'}
             </span>
           </a>
-        ))}
+        )})}
       </div>
 
       <div style={{

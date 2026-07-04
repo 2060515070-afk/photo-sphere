@@ -69,12 +69,14 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const streamRef = useRef<MediaStream | null>(null)
   const gestureStatusRef = useRef('')
 
-  const moduleInfo = MODULE_NAMES[moduleId] || { name: '自定义模块', icon: '📁' }
+  const moduleInfo = moduleId === 'all' ? { name: '全部照片', icon: '📸' } : (MODULE_NAMES[moduleId] || { name: '自定义模块', icon: '📁' })
   const photos = realPhotos.length > 0 ? realPhotos : makeDemoPhotos()
   const isDemo = realPhotos.length === 0
 
   useEffect(() => {
-    fetch(`/api/photos?userId=${userId}&moduleId=${moduleId}&limit=200`)
+    const qs = new URLSearchParams({ userId, limit: '200' })
+    if (moduleId !== 'all') qs.set('moduleId', moduleId)
+    fetch(`/api/photos?${qs}`)
       .then(r => r.json())
       .then(d => setRealPhotos(d.photos || []))
       .catch(() => {})
