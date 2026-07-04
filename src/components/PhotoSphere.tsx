@@ -83,6 +83,24 @@ export default function PhotoSphere({
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const frameCount = useRef(0)
 
+  // 背景粒子
+  const bgParticles = useMemo(() => {
+    const colors = [
+      'rgba(129,140,255,0.9)', 'rgba(167,139,250,0.75)', 'rgba(244,114,182,0.6)',
+      'rgba(96,165,250,0.75)', 'rgba(52,211,153,0.6)', 'rgba(255,255,255,0.35)',
+    ]
+    return Array.from({ length: 300 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 2 + Math.random() * 4,
+      opacity: 0.3 + Math.random() * 0.7,
+      duration: 4 + Math.random() * 6,
+      delay: Math.random() * 5,
+      color: colors[i % colors.length],
+    }))
+  }, [])
+
 
 
   // 照片数量
@@ -223,6 +241,21 @@ export default function PhotoSphere({
         perspectiveOrigin: '50% 50%',
       }}
     >
+      {/* 背景粒子 */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+        {bgParticles.map((p) => (
+          <div key={p.id} style={{
+            position: 'absolute',
+            left: `${p.x}%`, top: `${p.y}%`,
+            width: `${p.size}px`, height: `${p.size}px`,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${p.color}, transparent)`,
+            opacity: p.opacity,
+            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
+          }} />
+        ))}
+      </div>
+
       {/* 弥散光晕 */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -342,6 +375,11 @@ export default function PhotoSphere({
         }
         .sphere-photo {
           will-change: transform;
+        }
+        @keyframes particle-float {
+          0% { transform: translateY(0) translateX(0) scale(1); }
+          50% { transform: translateY(-20px) translateX(10px) scale(1.2); }
+          100% { transform: translateY(10px) translateX(-8px) scale(0.8); }
         }
 
       `}</style>
