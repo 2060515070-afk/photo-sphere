@@ -96,7 +96,7 @@ export default function Home() {
         gap: '16px', maxWidth: '1100px', margin: '0 auto',
       }}>
         {modules.map((mod, index) => (
-          <a key={mod.id} href={`/module/${mod.id}`} className="glass-card"
+          <a key={mod.id} href={`/user/${userId}/module/${mod.id}`} className="glass-card"
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               padding: '28px 20px', textDecoration: 'none', color: 'inherit', cursor: 'pointer',

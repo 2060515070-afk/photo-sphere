@@ -60,6 +60,10 @@ export default function UploadPage() {
         const formData = new FormData()
         formData.append('file', files[i].file)
         formData.append('moduleId', 'other')
+        const stored = localStorage.getItem('photoSphereUser')
+        if (stored) {
+          try { formData.append('userId', JSON.parse(stored).id) } catch {}
+        }
 
         setFiles(prev => { const n = [...prev]; n[i] = { ...n[i], progress: 20 }; return n })
 
@@ -116,6 +120,7 @@ export default function UploadPage() {
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 600, marginBottom: '8px' }}>上传照片</h1>
         <p style={{ color: '#8888a0', fontSize: '14px' }}>支持 JPG、PNG、WebP，AI 将自动识别并分类</p>
+        <a href="/home" style={{ color: '#8888a0', fontSize: '13px', textDecoration: 'none' }}>← 返回空间</a>
       </div>
 
       {/* 拖拽上传区域 */}
@@ -179,7 +184,7 @@ export default function UploadPage() {
               </button>
               {doneCount > 0 && (
                 <button
-                  onClick={() => router.push('/')}
+                  onClick={() => router.push('/home')}
                   style={{
                     padding: '8px 16px', background: 'rgba(34,197,94,0.15)',
                     border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px',

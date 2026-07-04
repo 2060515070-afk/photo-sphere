@@ -74,7 +74,11 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const isDemo = realPhotos.length === 0
 
   useEffect(() => {
-    fetch(`/api/photos?moduleId=${id}&limit=200`)
+    const stored = localStorage.getItem('photoSphereUser')
+    const userId = stored ? JSON.parse(stored).id : ''
+    const qs = new URLSearchParams({ moduleId: id, limit: '200' })
+    if (userId) qs.set('userId', userId)
+    fetch(`/api/photos?${qs}`)
       .then(r => r.json())
       .then(d => setRealPhotos(d.photos || []))
       .catch(() => {})
@@ -355,7 +359,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
       {/* 头部 */}
       <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a href="/" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>← 返回</a>
+          <a href="/home" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>← 返回</a>
           <span style={{ fontSize: '1.5rem' }}>{moduleInfo.icon}</span>
           <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
           <span style={{ fontSize: '13px', color: '#8888a0' }}>{isDemo ? `${photos.length} 演示` : `${photos.length} 张`}</span>

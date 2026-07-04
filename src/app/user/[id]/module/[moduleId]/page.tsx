@@ -46,7 +46,7 @@ function makeDemoPhotos(): Photo[] {
 }
 
 export default function ModulePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: userId, moduleId } = use(params)
+  const { id: userId, moduleId } = use(params) as { id: string; moduleId: string }
   const [realPhotos, setRealPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
@@ -69,17 +69,17 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const streamRef = useRef<MediaStream | null>(null)
   const gestureStatusRef = useRef('')
 
-  const moduleInfo = MODULE_NAMES[id] || { name: '自定义模块', icon: '📁' }
+  const moduleInfo = MODULE_NAMES[moduleId] || { name: '自定义模块', icon: '📁' }
   const photos = realPhotos.length > 0 ? realPhotos : makeDemoPhotos()
   const isDemo = realPhotos.length === 0
 
   useEffect(() => {
-    fetch(`/api/photos?userId=&moduleId=&limit=200`)
+    fetch(`/api/photos?userId=${userId}&moduleId=${moduleId}&limit=200`)
       .then(r => r.json())
       .then(d => setRealPhotos(d.photos || []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [id])
+  }, [userId, moduleId])
 
   const openViewer = useCallback((photo: Photo) => {
     setSelectedPhoto(photo)
@@ -96,7 +96,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
     if (!confirm('确定要删除这张照片吗？')) return
     setDeleting(photoId)
     try {
-      const res = await fetch(/api/photos?userId=userId, {
+      const res = await fetch(`/api/photos?userId=${userId}`, {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: photoId }),
       })
@@ -355,7 +355,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
       {/* 头部 */}
       <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a href="/" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>← 返回</a>
+          <a href="/home" style={{ color: '#8888a0', textDecoration: 'none', fontSize: '14px' }}>← 返回</a>
           <span style={{ fontSize: '1.5rem' }}>{moduleInfo.icon}</span>
           <h1 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{moduleInfo.name}</h1>
           <span style={{ fontSize: '13px', color: '#8888a0' }}>{isDemo ? `${photos.length} 演示` : `${photos.length} 张`}</span>
