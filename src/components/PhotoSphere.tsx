@@ -151,29 +151,6 @@ export default function PhotoSphere({
           el.style.setProperty('--crx', `${-rot.current.x}deg`)
           el.style.setProperty('--cry', `${-rot.current.y}deg`)
 
-          // 根据照片朝向动态调整透明度和z-index
-          const rx = rot.current.x * Math.PI / 180
-          const ry = rot.current.y * Math.PI / 180
-          const cosRx = Math.cos(rx), sinRx = Math.sin(rx)
-          const cosRy = Math.cos(ry), sinRy = Math.sin(ry)
-          const children = el.children
-          const posLen = positions.length
-          for (let i = 0; i < children.length && i < posLen; i++) {
-            const p = positions[i]!
-            // 计算照片在旋转后的有效z分量
-            const ez = -sinRx * p.y + cosRx * cosRy * p.z + cosRx * sinRy * p.x
-            const child = children[i] as HTMLElement
-            if (ez > -50) {
-              // 正面或侧面：正常显示
-              child.style.opacity = '1'
-              child.style.zIndex = '10'
-            } else {
-              // 完全背对：逐渐变透明
-              const fade = Math.max(0.2, 1 + (ez + 50) / 300)
-              child.style.opacity = String(fade)
-              child.style.zIndex = '1'
-            }
-          }
         }
         const container = containerRef.current
         if (container) {
@@ -281,10 +258,13 @@ export default function PhotoSphere({
                 cursor: 'pointer',
                 // 核心：translate3d 定位 + CSS变量反向旋转 = 始终面向摄像机
                 transform: `translate3d(${pos.x}px, ${pos.y}px, ${pos.z}px) rotateY(var(--cry)) rotateX(var(--crx))`,
-                transition: 'box-shadow 0.3s, opacity 0.15s',
+                opacity: meta.opacity,
+                transition: 'box-shadow 0.3s',
                 boxShadow: isHovered
                   ? '0 0 24px rgba(99,102,241,0.8)'
                   : '0 2px 12px rgba(0,0,0,0.4)',
+                zIndex: isHovered ? 100 : 1,
+                backfaceVisibility: 'hidden',
               }}
               onClick={(e) => { e.stopPropagation(); onPhotoClick?.(photo) }}
               onPointerEnter={() => setHoveredId(photo.id)}
