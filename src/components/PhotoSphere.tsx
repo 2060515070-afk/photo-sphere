@@ -281,8 +281,9 @@ export default function PhotoSphere({
       <div
         ref={innerRef}
         style={{
-          position: 'relative',
-          width: '1px', height: '1px',
+          position: 'absolute',
+          left: '50%', top: '50%',
+          width: 0, height: 0,
           overflow: 'visible',
           transformStyle: 'preserve-3d',
           transform: 'rotateX(-15deg) rotateY(0deg)',
@@ -376,10 +377,9 @@ export default function PhotoSphere({
             borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.3))',
             boxShadow: '0 0 8px rgba(255,255,255,0.5)',
-            transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotateY(var(--cry)) rotateX(var(--crx))`,
+            transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px)`,
             opacity: p.opacity,
             pointerEvents: 'none',
-            backfaceVisibility: 'hidden',
             animation: `particle-float ${3 + p.delay}s ease-in-out ${p.delay}s infinite alternate`,
           }} />
         ))}
