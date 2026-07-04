@@ -126,8 +126,10 @@ export default function PhotoSphere({
       }
 
       if (gestureZoomRef?.current) {
-        targetDist.current -= gestureZoomRef.current * 80
-        targetDist.current = Math.max(200, Math.min(1000, targetDist.current))
+        // 直接修改 dist，不走 ease 平滑，消除延迟
+        const zoomDelta = gestureZoomRef.current * 80
+        dist.current = Math.max(200, Math.min(1000, dist.current - zoomDelta))
+        targetDist.current = dist.current
         gestureZoomRef.current = null
       }
 
@@ -139,8 +141,7 @@ export default function PhotoSphere({
       const ease = 0.18 * dt
       rot.current.x += (targetRot.current.x - rot.current.x) * ease
       rot.current.y += (targetRot.current.y - rot.current.y) * ease
-      // 缩放用更高的 ease，减少延迟但保留平滑防抖
-      dist.current += (targetDist.current - dist.current) * 0.55 * dt
+      dist.current += (targetDist.current - dist.current) * ease
 
       // 每 2 帧更新一次 DOM（减少 50% 开销）
       frameCount.current++

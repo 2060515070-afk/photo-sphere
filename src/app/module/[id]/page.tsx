@@ -133,7 +133,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
 
     // 捏合：拇指尖(4)和食指尖(8)非常近，且其他手指伸直
     const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y, lm[4].z - lm[8].z)
-    if (pinchDist < 0.08 && ct > 0.3) return 'pinch'
+    if (pinchDist < 0.05 && ct > 0.4) return 'pinch'
 
     // 张开手掌：全部伸直
     if (iUp && mUp && rUp && pUp) return 'open_palm'
