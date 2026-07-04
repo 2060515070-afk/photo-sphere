@@ -107,18 +107,24 @@ export default function PhotoSphere({
   const radius = useMemo(() => Math.max(200, Math.min(380, 15 * Math.sqrt(displayPhotos.length))), [displayPhotos.length])
   const positions = useMemo(() => diffuseSphere(displayPhotos.length, radius), [displayPhotos.length, radius])
 
-  // 散在球体周围的银白粒子
+  // 散在球体周围的银白粒子（跟随旋转）
   const orbitParticles = useMemo(() => {
-    return Array.from({ length: 100 }, (_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 100,
-      y: (Math.random() - 0.5) * 100,
-      size: 1.5 + Math.random() * 2.5,
-      opacity: 0.3 + Math.random() * 0.5,
-      duration: 6 + Math.random() * 8,
-      delay: Math.random() * 6,
-    }))
-  }, [])
+    const orbitR = radius * 1.8
+    return Array.from({ length: 100 }, (_, i) => {
+      const phi = Math.acos(2 * Math.random() - 1)
+      const theta = 2 * Math.PI * Math.random()
+      const r = orbitR * (0.6 + Math.random() * 0.4)
+      return {
+        id: i,
+        x: r * Math.sin(phi) * Math.cos(theta),
+        y: r * Math.sin(phi) * Math.sin(theta),
+        z: r * Math.cos(phi),
+        size: 1.5 + Math.random() * 2.5,
+        opacity: 0.4 + Math.random() * 0.6,
+        delay: Math.random() * 4,
+      }
+    })
+  }, [radius])
 
   // 预生成每张照片的固定尺寸和透明度（不随帧变化）
   const photoMeta = useMemo(() =>
@@ -360,21 +366,20 @@ export default function PhotoSphere({
           )
         })}
 
-
-      </div>
-
-      {/* 银白环绕粒子（在球体上层） */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 20 }}>
+        {/* 银白环绕粒子 */}
         {orbitParticles.map((p) => (
           <div key={`orbit-${p.id}`} style={{
             position: 'absolute',
-            left: `${50 + p.x}%`, top: `${50 + p.y}%`,
             width: `${p.size}px`, height: `${p.size}px`,
+            left: `${-p.size / 2}px`, top: `${-p.size / 2}px`,
             borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.3))',
             boxShadow: '0 0 8px rgba(255,255,255,0.5)',
+            transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotateY(var(--cry)) rotateX(var(--crx))`,
             opacity: p.opacity,
-            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
+            pointerEvents: 'none',
+            backfaceVisibility: 'hidden',
+            animation: `particle-float ${3 + p.delay}s ease-in-out ${p.delay}s infinite alternate`,
           }} />
         ))}
       </div>
