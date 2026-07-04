@@ -163,13 +163,13 @@ export default function PhotoSphere({
             // 计算照片在旋转后的有效z分量
             const ez = -sinRx * p.y + cosRx * cosRy * p.z + cosRx * sinRy * p.x
             const child = children[i] as HTMLElement
-            if (ez > 0) {
-              // 朝前：完全不透明，高z-index
+            if (ez > -50) {
+              // 正面或侧面：正常显示
               child.style.opacity = '1'
               child.style.zIndex = '10'
             } else {
-              // 朝后：渐变透明，低z-index
-              const fade = Math.max(0.15, 1 + ez / 150)
+              // 完全背对：逐渐变透明
+              const fade = Math.max(0.2, 1 + (ez + 50) / 300)
               child.style.opacity = String(fade)
               child.style.zIndex = '1'
             }
