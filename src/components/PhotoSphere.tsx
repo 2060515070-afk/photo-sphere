@@ -107,24 +107,18 @@ export default function PhotoSphere({
   const radius = useMemo(() => Math.max(200, Math.min(380, 15 * Math.sqrt(displayPhotos.length))), [displayPhotos.length])
   const positions = useMemo(() => diffuseSphere(displayPhotos.length, radius), [displayPhotos.length, radius])
 
-  // 跟随球体转动的银白粒子
+  // 散在球体周围的银白粒子
   const orbitParticles = useMemo(() => {
-    const orbitR = radius * 1.1
-    return Array.from({ length: 100 }, (_, i) => {
-      const phi = Math.acos(2 * Math.random() - 1)
-      const theta = 2 * Math.PI * Math.random()
-      const r = orbitR * (0.85 + Math.random() * 0.3)
-      return {
-        id: i,
-        x: r * Math.sin(phi) * Math.cos(theta),
-        y: r * Math.sin(phi) * Math.sin(theta),
-        z: r * Math.cos(phi),
-        size: 1.5 + Math.random() * 2.5,
-        opacity: 0.4 + Math.random() * 0.6,
-        delay: Math.random() * 4,
-      }
-    })
-  }, [radius])
+    return Array.from({ length: 100 }, (_, i) => ({
+      id: i,
+      x: (Math.random() - 0.5) * 100,
+      y: (Math.random() - 0.5) * 100,
+      size: 1.5 + Math.random() * 2.5,
+      opacity: 0.3 + Math.random() * 0.5,
+      duration: 6 + Math.random() * 8,
+      delay: Math.random() * 6,
+    }))
+  }, [])
 
   // 预生成每张照片的固定尺寸和透明度（不随帧变化）
   const photoMeta = useMemo(() =>
@@ -275,6 +269,20 @@ export default function PhotoSphere({
             animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
           }} />
         ))}
+        {/* 银白环绕粒子 */}
+        {orbitParticles.map((p) => (
+          <div key={`orbit-${p.id}`} style={{
+            position: 'absolute',
+            left: `${50 + p.x}%`, top: `${50 + p.y}%`,
+            width: `${p.size}px`, height: `${p.size}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.3))',
+            boxShadow: '0 0 8px rgba(255,255,255,0.5)',
+            opacity: p.opacity,
+            pointerEvents: 'none',
+            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
+          }} />
+        ))}
       </div>
 
       {/* 旋转容器 */}
@@ -366,21 +374,7 @@ export default function PhotoSphere({
           )
         })}
 
-        {/* 跟随球体转动的银白粒子 */}
-        {orbitParticles.map((p) => (
-          <div key={`orbit-${p.id}`} style={{
-            position: 'absolute',
-            width: `${p.size}px`, height: `${p.size}px`,
-            left: `${-p.size / 2}px`, top: `${-p.size / 2}px`,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(200,210,255,0.4))',
-            boxShadow: '0 0 6px rgba(255,255,255,0.6)',
-            transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotateY(var(--cry)) rotateX(var(--crx))`,
-            opacity: p.opacity,
-            pointerEvents: 'none',
-            animation: `particle-float ${3 + p.delay}s ease-in-out ${p.delay}s infinite alternate`,
-          }} />
-        ))}
+
       </div>
 
       <div className="gesture-indicator">
